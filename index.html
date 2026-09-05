@@ -334,6 +334,13 @@ button:active{transform:translateY(1px)}
     try { const data = await getJson(apiBase + runId + "/storage.json"); renderStorage(data); if (state) state.textContent = "GET /api/runs/" + runId + "/storage.json · 200"; }
     catch (error) { storageBody.innerHTML = '<tr><td colspan="8">storage API error: ' + error.message + "</td></tr>"; if (state) state.textContent = "API error"; }
   }
+  document.querySelectorAll("nav button").forEach(button => button.addEventListener("click", () => {
+    if (button.dataset.tab === "comparison") {
+      select.selectedIndex = 1; loadRun("pt-1041");
+    } else if (button.dataset.tab === "overview") {
+      const runId = select.options[select.selectedIndex].textContent.split(" /")[0]; loadRun(runId);
+    }
+  }));
   matrixScope.addEventListener("change", renderMatrix);
   matrixMetric.addEventListener("change", renderMatrix);
   select.addEventListener("change", event => {
