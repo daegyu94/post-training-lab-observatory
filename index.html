@@ -29,14 +29,14 @@ button:active{transform:translateY(1px)}
 @media(max-width:700px){.service-head{align-items:flex-start;flex-direction:column}.service-grid{grid-template-columns:1fr}}
 
 
-.resource-strip{grid-template-columns:repeat(4,1fr);margin-top:18px}
+.resource-strip{grid-template-columns:repeat(5,1fr);margin-top:18px}
 .resource-strip .value{font-size:25px}.resource-strip .note{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .matrix-toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;padding:0 21px 15px}
 .matrix-toolbar label{font-size:10px;letter-spacing:1px;color:#8592a7}.matrix-toolbar select{display:block;margin-top:5px;min-width:190px}
 .matrix-state{margin-left:auto;font-size:12px;color:#8492a7}.matrix-layout{display:grid;grid-template-columns:minmax(0,1fr) 245px;gap:18px;padding:0 21px 21px}
 .matrix-wrap{overflow:auto;border:1px solid #e5ebf3;border-radius:6px}.matrix{border-collapse:separate;border-spacing:3px;width:100%;min-width:520px;background:#f8fafd;padding:6px}.matrix th{font-size:10px;color:#708097;font-weight:500;white-space:nowrap;padding:5px}.matrix td{height:42px;min-width:66px;text-align:center;border-radius:4px;font-size:11px;font-weight:600;color:#23406c;transition:transform .15s}.matrix td:not(.diagonal):hover{outline:2px solid #3868df;outline-offset:1px;transform:scale(1.04);position:relative;z-index:1}.matrix .diagonal{background:#eef2f7!important;color:#a7b2c1}.matrix-legend{font-size:12px;line-height:1.7;color:#718198}.matrix-legend strong{display:block;color:#354761;font-size:13px;margin-bottom:7px}.matrix-legend p{margin:7px 0}.matrix-chip{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px}
 .storage-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(250px,.7fr);gap:18px;padding:0 21px 21px}.storage-table{width:100%;border-collapse:collapse;font-size:12px}.storage-table th{color:#748299;background:#f8fafd;font-weight:500;text-align:left}.storage-table th,.storage-table td{padding:11px 12px;border-bottom:1px solid #edf1f6;white-space:nowrap}.storage-table tr.hot{background:#fff7e8}.storage-table .right{text-align:right}.storage-summary{border:1px solid #dfe7f2;border-radius:7px;background:#f8faff;padding:16px}.storage-summary h3{font-size:14px;margin:0 0 13px}.storage-summary dl{display:grid;grid-template-columns:1fr auto;gap:10px;font-size:12px}.storage-summary dt{color:#8492a7}.storage-summary dd{margin:0;color:#34465f;font-weight:600;text-align:right}.storage-summary .warning{color:#a6742d}.api-toolbar{display:flex;gap:10px;align-items:end;padding:0 21px 14px}.api-toolbar label{font-size:10px;letter-spacing:1px;color:#8592a7;flex:1}.api-toolbar select{display:block;width:100%;margin-top:5px}.api-status{font-size:12px;color:#8492a7;min-height:18px}.api-response{margin:0 21px 21px;padding:15px;border:1px solid #e1e8f2;border-radius:6px;background:#101b2b;color:#d5e4ff;min-height:115px;max-height:270px;overflow:auto;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap}
-@media(max-width:1000px){.resource-strip{grid-template-columns:repeat(2,1fr)}.matrix-layout,.storage-grid{grid-template-columns:1fr}}
+@media(max-width:1100px){.resource-strip{grid-template-columns:repeat(3,1fr)}.matrix-layout,.storage-grid{grid-template-columns:1fr}}\n@media(max-width:1000px){.resource-strip{grid-template-columns:repeat(2,1fr)}.matrix-layout,.storage-grid{grid-template-columns:1fr}}
 @media(max-width:600px){.resource-strip{gap:9px}.resource-strip .value{font-size:21px}.matrix-toolbar{padding-left:13px;padding-right:13px}.matrix-state{margin-left:0}.matrix-layout,.storage-grid{padding-left:13px;padding-right:13px}.api-toolbar{padding-left:13px;padding-right:13px;align-items:stretch;flex-direction:column}}
 
 </style>
@@ -70,7 +70,7 @@ button:active{transform:translateY(1px)}
 <section class="stats resource-strip" id="resource-summary">
   <article class="card"><small>HOST CPU · MEAN</small><div class="value" data-resource="cpu">63 <span>%</span></div><div class="note">Node Exporter · all nodes</div></article>
   <article class="card"><small>HOST MEMORY</small><div class="value" data-resource="memory">682 <span>GiB</span></div><div class="note">working set · 4 nodes</div></article>
-  <article class="card"><small>FABRIC TX / RX</small><div class="value" data-resource="network">126 <span>Gbps</span></div><div class="note">RoCE/RDMA · peak egress</div></article>
+  <article class="card"><small>FABRIC TX / RX</small><div class="value" data-resource="network">126 <span>Gbps</span></div><div class="note">RoCE/RDMA · peak egress</div></article>\n  <article class="card"><small>GPU MEMORY · MEAN</small><div class="value" data-resource="gpu-memory">173 <span>GiB</span></div><div class="note">DCGM exporter · allocated</div></article>
   <article class="card"><small>STORAGE LATENCY · P95</small><div class="value warn" data-resource="storage">8.7 <span>ms</span></div><div class="note warn">node-02 NVMe queue depth 32</div></article>
 </section>
 
@@ -237,7 +237,7 @@ button:active{transform:translateY(1px)}
     setValue('[data-metric="checkpoint"]', Number(m.checkpoint_save_time_seconds), "s");
     setValue('[data-resource="cpu"]', Number(m.host_cpu_utilization_percent).toFixed(0), "%");
     setValue('[data-resource="memory"]', Number(m.host_memory_used_gib).toLocaleString(), "GiB");
-    setValue('[data-resource="network"]', Number(m.network_transmit_gbps).toFixed(0), "Gbps");
+    setValue('[data-resource="network"]', Number(m.network_transmit_gbps).toFixed(0), "Gbps");\n    setValue('[data-resource="gpu-memory"]', Number(m.gpu_memory_used_gib).toFixed(0), "GiB");
     setValue('[data-resource="storage"]', Number(m.storage_latency_ms_p95).toFixed(1), "ms");
     const title = document.querySelector("#diagnostic-panel h3");
     const message = document.querySelector("#diagnostic-panel h3 + p");
@@ -276,7 +276,7 @@ button:active{transform:translateY(1px)}
     const values = block[metric];
     const flat = values.flat().filter(Boolean);
     const max = Math.max.apply(null, flat);
-    const unit = metric === "utilization_percent" ? "%" : metric === "throughput_gbps" ? " GB/s" : " µs";
+    const unit = metric === "utilization_percent" ? "%" : metric === "throughput_gbps" ? " Gbps" : " µs";
     const isHot = metric === "utilization_percent" || metric === "latency_us";
     let markup = '<table class="matrix"><thead><tr><th></th>' + block.labels.map(label => "<th>" + label + "</th>").join("") + "</tr></thead><tbody>";
     values.forEach((row, i) => {
