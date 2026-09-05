@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "run_id": "pt-1041",
+  "source": "static-mock-api",
+  "generated_at": "2026-09-04T20:10:00Z",
+  "status": "completed",
+  "configuration": {
+    "model": "Atlas 1T MoE (synthetic)",
+    "framework": "Megatron-LM",
+    "parallelism": {"tensor": 8, "pipeline": 4, "data": 1, "context": 1},
+    "nodes": 4,
+    "gpus": 32,
+    "accelerator": "B300 (assumed)",
+    "interconnect": ["NVLink 5", "400 Gbps RoCE/RDMA (assumed)"]
+  },
+  "metrics": {
+    "training_tokens_per_second": 96500,
+    "training_step_time_seconds_p95": 11.2,
+    "training_data_wait_seconds_p95": 0.8,
+    "training_compute_seconds_p95": 8.1,
+    "training_communication_seconds_p95": 2.2,
+    "gpu_utilization_percent": 91.4,
+    "gpu_memory_used_gib": 170,
+    "gpu_power_watts": 846,
+    "host_cpu_utilization_percent": 58,
+    "host_memory_used_gib": 640,
+    "network_receive_gbps": 104,
+    "network_transmit_gbps": 110,
+    "storage_read_gbps": 1.64,
+    "storage_write_gbps": 0.51,
+    "storage_latency_ms_p95": 2.4,
+    "checkpoint_save_time_seconds": 39,
+    "checkpoint_size_gib": 912
+  },
+  "diagnostic": {
+    "severity": "ok",
+    "title": "baseline run은 안정적",
+    "message": "모든 node의 utilization과 collective 시간이 비교 기준 범위에 있습니다.",
+    "collective_seconds": 2.2,
+    "reference_seconds": 2.2
+  }
+}
