@@ -28,6 +28,17 @@ button:active{transform:translateY(1px)}
 .api-list{display:none;margin:12px 0 0;padding:10px 12px;border-left:3px solid #7798ed;background:#f4f7ff;color:#5f718c;font:12px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace}.service-preview.connected .api-list{display:block}
 @media(max-width:700px){.service-head{align-items:flex-start;flex-direction:column}.service-grid{grid-template-columns:1fr}}
 
+
+.resource-strip{grid-template-columns:repeat(4,1fr);margin-top:18px}
+.resource-strip .value{font-size:25px}.resource-strip .note{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.matrix-toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;padding:0 21px 15px}
+.matrix-toolbar label{font-size:10px;letter-spacing:1px;color:#8592a7}.matrix-toolbar select{display:block;margin-top:5px;min-width:190px}
+.matrix-state{margin-left:auto;font-size:12px;color:#8492a7}.matrix-layout{display:grid;grid-template-columns:minmax(0,1fr) 245px;gap:18px;padding:0 21px 21px}
+.matrix-wrap{overflow:auto;border:1px solid #e5ebf3;border-radius:6px}.matrix{border-collapse:separate;border-spacing:3px;width:100%;min-width:520px;background:#f8fafd;padding:6px}.matrix th{font-size:10px;color:#708097;font-weight:500;white-space:nowrap;padding:5px}.matrix td{height:42px;min-width:66px;text-align:center;border-radius:4px;font-size:11px;font-weight:600;color:#23406c;transition:transform .15s}.matrix td:not(.diagonal):hover{outline:2px solid #3868df;outline-offset:1px;transform:scale(1.04);position:relative;z-index:1}.matrix .diagonal{background:#eef2f7!important;color:#a7b2c1}.matrix-legend{font-size:12px;line-height:1.7;color:#718198}.matrix-legend strong{display:block;color:#354761;font-size:13px;margin-bottom:7px}.matrix-legend p{margin:7px 0}.matrix-chip{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.storage-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(250px,.7fr);gap:18px;padding:0 21px 21px}.storage-table{width:100%;border-collapse:collapse;font-size:12px}.storage-table th{color:#748299;background:#f8fafd;font-weight:500;text-align:left}.storage-table th,.storage-table td{padding:11px 12px;border-bottom:1px solid #edf1f6;white-space:nowrap}.storage-table tr.hot{background:#fff7e8}.storage-table .right{text-align:right}.storage-summary{border:1px solid #dfe7f2;border-radius:7px;background:#f8faff;padding:16px}.storage-summary h3{font-size:14px;margin:0 0 13px}.storage-summary dl{display:grid;grid-template-columns:1fr auto;gap:10px;font-size:12px}.storage-summary dt{color:#8492a7}.storage-summary dd{margin:0;color:#34465f;font-weight:600;text-align:right}.storage-summary .warning{color:#a6742d}.api-toolbar{display:flex;gap:10px;align-items:end;padding:0 21px 14px}.api-toolbar label{font-size:10px;letter-spacing:1px;color:#8592a7;flex:1}.api-toolbar select{display:block;width:100%;margin-top:5px}.api-status{font-size:12px;color:#8492a7;min-height:18px}.api-response{margin:0 21px 21px;padding:15px;border:1px solid #e1e8f2;border-radius:6px;background:#101b2b;color:#d5e4ff;min-height:115px;max-height:270px;overflow:auto;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap}
+@media(max-width:1000px){.resource-strip{grid-template-columns:repeat(2,1fr)}.matrix-layout,.storage-grid{grid-template-columns:1fr}}
+@media(max-width:600px){.resource-strip{gap:9px}.resource-strip .value{font-size:21px}.matrix-toolbar{padding-left:13px;padding-right:13px}.matrix-state{margin-left:0}.matrix-layout,.storage-grid{padding-left:13px;padding-right:13px}.api-toolbar{padding-left:13px;padding-right:13px;align-items:stretch;flex-direction:column}}
+
 </style>
 </head>
 <body>
@@ -55,6 +66,37 @@ button:active{transform:translateY(1px)}
 </section>
 <div class="architecture"><article><b>▣</b><h3>Collection</h3><p>Node Exporter · DCGM<br>Framework timers</p><small>향후 연결</small></article><span class="arrow">→</span><article><b>▤</b><h3>Data providers</h3><p>Prometheus · Run DB<br>Artifact storage</p><small>현재: typed fixtures</small></article><span class="arrow">→</span><article><b>◇</b><h3>Read-only API</h3><p>실험 목록 · GPU/rank<br>요약 · time series</p><small>향후 서버 API</small></article><span class="arrow">→</span><article><b>◈</b><h3>Observatory</h3><p>실험 비교 · 병목 탐색<br>JSON report export</p><small>현재 화면 계약</small></article></div></section>
 <section class="twocol"><article class="panel padded"><h2>사내 운영 전 필요한 연결</h2><ul><li>SSO / RBAC: 프로젝트·클러스터 접근 제어</li><li>서버측 Prometheus query allowlist, timeout, 범위 제한</li><li>run_id ↔ scheduler job ↔ node/GPU allocation 기록</li><li>지속 저장, 감사 로그, artifact 보존 정책</li></ul><p class="muted">GitHub Pages는 정적 파일만 제공하므로 이 데모는 실제 collector, 사내 인증, 영속 DB와 연결하지 않습니다.</p></article><article class="panel padded"><h2>UX 참고 구현</h2><p class="muted">실험 탐색·비교는 MLflow, node/rank drill-down은 Ray, 공통 시간축·필터는 Grafana의 방식을 참고했습니다.</p><a href="https://github.com/mlflow/mlflow">MLflow · experiment comparison ↗</a><a href="https://docs.ray.io/en/latest/cluster/metrics.html">Ray · node / worker drill-down ↗</a><a href="https://grafana.com/docs/grafana/latest/dashboards/variables/">Grafana · shared filters ↗</a></article></section>
+
+<section class="stats resource-strip" id="resource-summary">
+  <article class="card"><small>HOST CPU · MEAN</small><div class="value" data-resource="cpu">63 <span>%</span></div><div class="note">Node Exporter · all nodes</div></article>
+  <article class="card"><small>HOST MEMORY</small><div class="value" data-resource="memory">682 <span>GiB</span></div><div class="note">working set · 4 nodes</div></article>
+  <article class="card"><small>FABRIC TX / RX</small><div class="value" data-resource="network">126 <span>Gbps</span></div><div class="note">RoCE/RDMA · peak egress</div></article>
+  <article class="card"><small>STORAGE LATENCY · P95</small><div class="value warn" data-resource="storage">8.7 <span>ms</span></div><div class="note warn">node-02 NVMe queue depth 32</div></article>
+</section>
+
+<section class="panel full" id="interconnect-panel">
+  <div class="head"><div><h2>Interconnect matrix</h2><p>node↔node fabric과 GPU↔GPU 경로의 utilization·throughput·latency</p></div><span class="muted" id="matrix-api-state">GET /api/runs/pt-1042/interconnect.json</span></div>
+  <div class="matrix-toolbar">
+    <label>TOPOLOGY<select id="matrix-scope"><option value="node2node">Node ↔ node · RoCE/RDMA</option><option value="gpu2gpu">GPU ↔ GPU · NVLink / PCIe</option></select></label>
+    <label>METRIC<select id="matrix-metric"><option value="utilization_percent">Utilization (%)</option><option value="throughput_gbps">Throughput (GB/s)</option><option value="latency_us">Latency (µs)</option></select></label>
+    <span class="matrix-state" id="matrix-state">API 응답 대기 중</span>
+  </div>
+  <div class="matrix-layout"><div class="matrix-wrap" id="interconnect-matrix"><div class="muted" style="padding:20px">interconnect API를 불러오는 중…</div></div><aside class="matrix-legend"><strong>읽는 법</strong><p><span class="matrix-chip" style="background:#dce8ff"></span>낮은 사용량</p><p><span class="matrix-chip" style="background:#f0bd70"></span>높은 사용량</p><p>대각선은 자기 자신입니다. node-02 경로는 합성 contention 구간으로 강조됩니다.</p><p class="notice">실제 환경에서는 NCCL Tests baseline과 DCGM/NIC exporter를 같은 run_id로 묶습니다.</p></aside></div>
+</section>
+
+<section class="panel full" id="storage-panel">
+  <div class="head"><div><h2>Storage & checkpoint</h2><p>dataset read/write, IOPS, queue depth와 checkpoint critical path</p></div><span class="muted" id="storage-api-state">GET /api/runs/pt-1042/storage.json</span></div>
+  <div class="storage-grid"><div class="full" style="margin:0;overflow:auto"><table class="storage-table"><thead><tr><th>Node</th><th>Device</th><th>Mount</th><th class="right">Read</th><th class="right">Write</th><th class="right">IOPS</th><th class="right">P95 latency</th><th class="right">Util</th></tr></thead><tbody id="storage-body"><tr><td colspan="8" class="muted">storage API를 불러오는 중…</td></tr></tbody></table></div><div class="storage-summary" id="checkpoint-summary"><h3>Checkpoint path</h3><dl><dt>Size</dt><dd>—</dd><dt>Save</dt><dd>—</dd><dt>Load</dt><dd>—</dd><dt>Throughput</dt><dd>—</dd><dt>Location</dt><dd>—</dd></dl></div></div>
+</section>
+
+<section class="panel full" id="api-panel">
+  <div class="head"><div><h2>Mock API explorer</h2><p>정적 JSON endpoint를 실제 <code>fetch</code>로 호출하는 개발용 화면</p></div><span class="muted">STATIC MOCK API · READ ONLY</span></div>
+  <div class="api-toolbar"><label>ENDPOINT<select id="api-endpoint"><option value="api/runs.json">GET /api/runs.json · run registry</option><option value="api/runs/pt-1042/summary.json">GET /api/runs/pt-1042/summary.json · resource summary</option><option value="api/runs/pt-1042/interconnect.json">GET /api/runs/pt-1042/interconnect.json · matrices</option><option value="api/runs/pt-1042/storage.json">GET /api/runs/pt-1042/storage.json · storage</option></select></label><button id="api-get" type="button">GET 실행</button><span id="api-status" class="api-status">버튼을 눌러 endpoint를 호출하세요.</span></div>
+  <pre id="api-response">{
+  "hint": "GET 실행을 누르면 실제 정적 JSON 응답이 표시됩니다."
+}</pre>
+</section>
+
 <footer><span>POSTTRAIN OBSERVATORY / SFT Lab</span><span>Simulation data · static GitHub Pages demo</span></footer>
 </main><div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script>
@@ -152,4 +194,143 @@ button:active{transform:translateY(1px)}
   applyRun(current, false);
 })();
 </script>
+
+<script>
+(() => {
+  const apiBase = "api/runs/";
+  const select = document.querySelector(".toolbar select");
+  const toast = document.getElementById("toast");
+  const matrixScope = document.getElementById("matrix-scope");
+  const matrixMetric = document.getElementById("matrix-metric");
+  const matrixHost = document.getElementById("interconnect-matrix");
+  const matrixState = document.getElementById("matrix-state");
+  const storageBody = document.getElementById("storage-body");
+  const storageSummary = document.getElementById("checkpoint-summary");
+  const apiStatus = document.getElementById("api-status");
+  const apiResponse = document.getElementById("api-response");
+  let interconnectData = null;
+  let selectedRun = "pt-1042";
+
+  function apiNotice(message) {
+    if (!toast) return;
+    toast.textContent = message; toast.classList.add("show");
+    window.clearTimeout(apiNotice.timeout);
+    apiNotice.timeout = window.setTimeout(() => toast.classList.remove("show"), 2800);
+  }
+  async function getJson(path) {
+    const response = await fetch(path, {headers: {"Accept": "application/json"}});
+    if (!response.ok) throw new Error(response.status + " " + response.statusText);
+    return response.json();
+  }
+  function setValue(selector, value, unit) {
+    const element = document.querySelector(selector);
+    if (!element) return;
+    element.childNodes[0].nodeValue = value + " ";
+    const span = element.querySelector("span");
+    if (span) span.textContent = unit;
+  }
+  function updateSummary(data) {
+    const m = data.metrics;
+    setValue('[data-metric="throughput"]', Number(m.training_tokens_per_second).toLocaleString(), "tokens/s");
+    setValue('[data-metric="step"]', Number(m.training_step_time_seconds_p95).toFixed(1), "s");
+    setValue('[data-metric="utilization"]', Number(m.gpu_utilization_percent).toFixed(1), "%");
+    setValue('[data-metric="checkpoint"]', Number(m.checkpoint_save_time_seconds), "s");
+    setValue('[data-resource="cpu"]', Number(m.host_cpu_utilization_percent).toFixed(0), "%");
+    setValue('[data-resource="memory"]', Number(m.host_memory_used_gib).toLocaleString(), "GiB");
+    setValue('[data-resource="network"]', Number(m.network_transmit_gbps).toFixed(0), "Gbps");
+    setValue('[data-resource="storage"]', Number(m.storage_latency_ms_p95).toFixed(1), "ms");
+    const title = document.querySelector("#diagnostic-panel h3");
+    const message = document.querySelector("#diagnostic-panel h3 + p");
+    if (title) title.textContent = data.diagnostic.title;
+    if (message) message.textContent = data.diagnostic.message;
+    const state = document.getElementById("matrix-api-state");
+    if (state) state.textContent = "GET /api/runs/" + data.run_id + "/interconnect.json";
+    const storageState = document.getElementById("storage-api-state");
+    if (storageState) storageState.textContent = "GET /api/runs/" + data.run_id + "/storage.json";
+  }
+  async function loadRun(runId) {
+    selectedRun = runId;
+    const state = document.getElementById("matrix-api-state");
+    if (state) state.textContent = "GET /api/runs/" + runId + "/summary.json · loading…";
+    try {
+      const data = await getJson(apiBase + runId + "/summary.json");
+      updateSummary(data);
+      await Promise.all([loadInterconnect(runId), loadStorage(runId)]);
+      apiNotice(runId + " summary API 응답을 반영했습니다.");
+    } catch (error) {
+      if (state) state.textContent = "API error · " + error.message;
+      apiNotice("Mock API 요청 실패: " + error.message);
+    }
+  }
+  function matrixColor(value, max, isHot) {
+    if (!value) return "#eef2f7";
+    const ratio = Math.max(0, Math.min(1, value / max));
+    const hue = isHot ? 38 - ratio * 8 : 218 - ratio * 18;
+    return "hsl(" + hue + " " + (38 + ratio * 35) + "% " + (96 - ratio * 36) + "%)";
+  }
+  function renderMatrix() {
+    if (!interconnectData) return;
+    const scope = matrixScope.value;
+    const metric = matrixMetric.value;
+    const block = interconnectData[scope];
+    const values = block[metric];
+    const flat = values.flat().filter(Boolean);
+    const max = Math.max.apply(null, flat);
+    const unit = metric === "utilization_percent" ? "%" : metric === "throughput_gbps" ? " GB/s" : " µs";
+    const isHot = metric === "utilization_percent" || metric === "latency_us";
+    let markup = '<table class="matrix"><thead><tr><th></th>' + block.labels.map(label => "<th>" + label + "</th>").join("") + "</tr></thead><tbody>";
+    values.forEach((row, i) => {
+      markup += "<tr><th>" + block.labels[i] + "</th>";
+      row.forEach((value, j) => {
+        const diagonal = i === j;
+        markup += '<td class="' + (diagonal ? "diagonal" : "") + '" style="background:' + matrixColor(value, max, isHot) + '" title="' + block.labels[i] + " → " + block.labels[j] + '">' + (diagonal ? "—" : Number(value).toLocaleString(undefined,{maximumFractionDigits:1}) + unit) + "</td>";
+      });
+      markup += "</tr>";
+    });
+    matrixHost.innerHTML = markup + "</tbody></table>";
+    matrixState.textContent = block.labels.length + "×" + block.labels.length + " · " + interconnectData.links.join(" · ");
+  }
+  async function loadInterconnect(runId) {
+    matrixState.textContent = "interconnect API loading…";
+    try { interconnectData = await getJson(apiBase + runId + "/interconnect.json"); renderMatrix(); }
+    catch (error) { matrixHost.innerHTML = '<div class="muted" style="padding:20px">interconnect API error: ' + error.message + "</div>"; matrixState.textContent = "API error"; }
+  }
+  function renderStorage(data) {
+    storageBody.innerHTML = data.devices.map(device => {
+      const hot = device.utilization_percent >= 85 || device.latency_ms_p95 >= 6;
+      return '<tr class="' + (hot ? "hot" : "") + '"><td>' + device.node + "</td><td>" + device.device + "</td><td>" + device.mount + '</td><td class="right">' + device.read_gbps.toFixed(2) + " GB/s</td><td class="right">" + device.write_gbps.toFixed(2) + " GB/s</td><td class="right">" + device.iops.toFixed(0) + 'k</td><td class="right">' + device.latency_ms_p95.toFixed(1) + " ms</td><td class="right">" + device.utilization_percent + "%</td></tr>";
+    }).join("");
+    const c = data.checkpoint;
+    storageSummary.innerHTML = "<h3>Checkpoint path</h3><dl><dt>Size</dt><dd>" + c.size_gib + " GiB</dd><dt>Save</dt><dd>" + c.save_seconds + " s</dd><dt>Load</dt><dd>" + c.load_seconds + " s</dd><dt>Throughput</dt><dd>" + c.throughput_gbps + " GB/s</dd><dt>Location</dt><dd>" + c.location + "</dd></dl><p class=\"notice\">node-02의 queue depth와 latency가 높아 checkpoint·dataset path를 함께 확인합니다.</p>";
+  }
+  async function loadStorage(runId) {
+    const state = document.getElementById("storage-api-state");
+    if (state) state.textContent = "GET /api/runs/" + runId + "/storage.json · loading…";
+    try { const data = await getJson(apiBase + runId + "/storage.json"); renderStorage(data); if (state) state.textContent = "GET /api/runs/" + runId + "/storage.json · 200"; }
+    catch (error) { storageBody.innerHTML = '<tr><td colspan="8">storage API error: ' + error.message + "</td></tr>"; if (state) state.textContent = "API error"; }
+  }
+  matrixScope.addEventListener("change", renderMatrix);
+  matrixMetric.addEventListener("change", renderMatrix);
+  select.addEventListener("change", event => {
+    event.stopImmediatePropagation();
+    const runId = event.target.options[event.target.selectedIndex].textContent.split(" /")[0];
+    loadRun(runId);
+  }, true);
+  document.getElementById("api-get").addEventListener("click", async () => {
+    const path = document.getElementById("api-endpoint").value;
+    apiStatus.textContent = "GET " + path + " · loading…";
+    apiResponse.textContent = "";
+    try {
+      const response = await getJson(path);
+      apiStatus.textContent = "200 OK · " + JSON.stringify(response).length + " bytes";
+      apiResponse.textContent = JSON.stringify(response, null, 2);
+    } catch (error) {
+      apiStatus.textContent = "ERROR · " + error.message;
+      apiResponse.textContent = JSON.stringify({error: error.message, endpoint: path}, null, 2);
+    }
+  });
+  loadRun(selectedRun);
+})();
+</script>
+
 </body></html>
