@@ -7,11 +7,19 @@
   "configuration": {
     "model": "Atlas 1T MoE (synthetic)",
     "framework": "Megatron-LM",
-    "parallelism": {"tensor": 8, "pipeline": 4, "data": 1, "context": 1},
+    "parallelism": {
+      "tensor": 8,
+      "pipeline": 4,
+      "data": 1,
+      "context": 1
+    },
     "nodes": 4,
     "gpus": 32,
     "accelerator": "B300 (assumed)",
-    "interconnect": ["NVLink 5", "400 Gbps RoCE/RDMA (assumed)"]
+    "interconnect": [
+      "NVLink 5",
+      "400 Gbps RoCE/RDMA (assumed)"
+    ]
   },
   "metrics": {
     "training_tokens_per_second": 84200,
@@ -30,7 +38,18 @@
     "storage_write_gbps": 0.64,
     "storage_latency_ms_p95": 8.7,
     "checkpoint_save_time_seconds": 46,
-    "checkpoint_size_gib": 912
+    "checkpoint_size_gib": 912,
+    "training_samples_per_second": 128.4,
+    "training_loss": 1.84,
+    "training_model_flops_utilization_ratio": 0.487,
+    "training_communication_overlap_ratio": 0.42,
+    "training_pipeline_bubble_ratio": 0.18,
+    "training_rank_straggler_ratio": 0.31,
+    "gpu_temperature_celsius": 71,
+    "gpu_clock_mhz": 1815,
+    "gpu_errors_total": 0,
+    "host_memory_pressure_ratio": 0.07,
+    "network_errors_total": 2
   },
   "diagnostic": {
     "severity": "warning",
@@ -38,5 +57,6 @@
     "message": "34–42분 구간에서 rank 16–23의 collective 시간이 길어진 합성 시나리오입니다.",
     "collective_seconds": 5.8,
     "reference_seconds": 2.2
-  }
+  },
+  "workload": "SFT"
 }
