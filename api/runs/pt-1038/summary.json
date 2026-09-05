@@ -7,11 +7,19 @@
   "configuration": {
     "model": "Qwen 72B (synthetic)",
     "framework": "PyTorch FSDP",
-    "parallelism": {"tensor": 1, "pipeline": 1, "data": 64, "context": 1},
+    "parallelism": {
+      "tensor": 1,
+      "pipeline": 1,
+      "data": 64,
+      "context": 1
+    },
     "nodes": 8,
     "gpus": 64,
     "accelerator": "H200 (assumed)",
-    "interconnect": ["NVLink 4", "200 Gbps InfiniBand (assumed)"]
+    "interconnect": [
+      "NVLink 4",
+      "200 Gbps InfiniBand (assumed)"
+    ]
   },
   "metrics": {
     "training_tokens_per_second": 71300,
@@ -30,7 +38,18 @@
     "storage_write_gbps": 0.72,
     "storage_latency_ms_p95": 12.4,
     "checkpoint_save_time_seconds": 58,
-    "checkpoint_size_gib": 512
+    "checkpoint_size_gib": 512,
+    "training_samples_per_second": 93.2,
+    "training_loss": 1.92,
+    "training_model_flops_utilization_ratio": 0.391,
+    "training_communication_overlap_ratio": 0.36,
+    "training_pipeline_bubble_ratio": 0,
+    "training_rank_straggler_ratio": 0.26,
+    "gpu_temperature_celsius": 68,
+    "gpu_clock_mhz": 1740,
+    "gpu_errors_total": 1,
+    "host_memory_pressure_ratio": 0.12,
+    "network_errors_total": 4
   },
   "diagnostic": {
     "severity": "warning",
@@ -38,5 +57,6 @@
     "message": "FSDP scale-out 합성 시나리오에서 일부 rank의 step tail이 길어집니다.",
     "collective_seconds": 4.4,
     "reference_seconds": 3.1
-  }
+  },
+  "workload": "SFT"
 }
