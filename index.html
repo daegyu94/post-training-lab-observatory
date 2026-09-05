@@ -298,7 +298,7 @@ button:active{transform:translateY(1px)}
   function renderStorage(data) {
     storageBody.innerHTML = data.devices.map(device => {
       const hot = device.utilization_percent >= 85 || device.latency_ms_p95 >= 6;
-      return '<tr class="' + (hot ? "hot" : "") + '"><td>' + device.node + "</td><td>" + device.device + "</td><td>" + device.mount + '</td><td class="right">' + device.read_gbps.toFixed(2) + " GB/s</td><td class="right">" + device.write_gbps.toFixed(2) + " GB/s</td><td class="right">" + device.iops.toFixed(0) + 'k</td><td class="right">' + device.latency_ms_p95.toFixed(1) + " ms</td><td class="right">" + device.utilization_percent + "%</td></tr>";
+      return '<tr class="' + (hot ? "hot" : "") + '"><td>' + device.node + "</td><td>" + device.device + "</td><td>" + device.mount + '</td><td class="right">' + device.read_gbps.toFixed(2) + " GB/s</td><td class=\"right\">" + device.write_gbps.toFixed(2) + " GB/s</td><td class=\"right\">" + device.iops.toFixed(0) + 'k</td><td class=\"right\">' + device.latency_ms_p95.toFixed(1) + " ms</td><td class=\"right\">" + device.utilization_percent + "%</td></tr>";
     }).join("");
     const c = data.checkpoint;
     storageSummary.innerHTML = "<h3>Checkpoint path</h3><dl><dt>Size</dt><dd>" + c.size_gib + " GiB</dd><dt>Save</dt><dd>" + c.save_seconds + " s</dd><dt>Load</dt><dd>" + c.load_seconds + " s</dd><dt>Throughput</dt><dd>" + c.throughput_gbps + " GB/s</dd><dt>Location</dt><dd>" + c.location + "</dd></dl><p class=\"notice\">node-02의 queue depth와 latency가 높아 checkpoint·dataset path를 함께 확인합니다.</p>";
