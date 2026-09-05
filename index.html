@@ -238,7 +238,8 @@ button:active{transform:translateY(1px)}
     setValue('[data-metric="checkpoint"]', Number(m.checkpoint_save_time_seconds), "s");
     setValue('[data-resource="cpu"]', Number(m.host_cpu_utilization_percent).toFixed(0), "%");
     setValue('[data-resource="memory"]', Number(m.host_memory_used_gib).toLocaleString(), "GiB");
-    setValue('[data-resource="network"]', Number(m.network_transmit_gbps).toFixed(0), "Gbps");\n    setValue('[data-resource="gpu-memory"]', Number(m.gpu_memory_used_gib).toFixed(0), "GiB");
+    setValue('[data-resource="network"]', Number(m.network_transmit_gbps).toFixed(0), "Gbps");
+    setValue('[data-resource="gpu-memory"], Number(m.gpu_memory_used_gib).toFixed(0), "GiB");
     setValue('[data-resource="storage"]', Number(m.storage_latency_ms_p95).toFixed(1), "ms");
     const title = document.querySelector("#diagnostic-panel h3");
     const message = document.querySelector("#diagnostic-panel h3 + p");
