@@ -40,6 +40,9 @@ button:active{transform:translateY(1px)}
 @media(max-width:1000px){.resource-strip{grid-template-columns:repeat(2,1fr)}.matrix-layout,.storage-grid{grid-template-columns:1fr}}
 @media(max-width:600px){.resource-strip{gap:9px}.resource-strip .value{font-size:21px}.matrix-toolbar{padding-left:13px;padding-right:13px}.matrix-state{margin-left:0}.matrix-layout,.storage-grid{padding-left:13px;padding-right:13px}.api-toolbar{padding-left:13px;padding-right:13px;align-items:stretch;flex-direction:column}}
 
+
+.phase-grid{display:grid;gap:13px;padding:2px 21px 21px}.phase-row{display:grid;grid-template-columns:145px minmax(0,1fr) 75px;gap:12px;align-items:center;font-size:12px}.phase-row label{color:#6f7f95}.phase-track{height:10px;background:#edf1f7;border-radius:20px;overflow:hidden}.phase-track span{display:block;height:100%;width:0;border-radius:20px;transition:width .35s}.phase-track .data{background:#8aa9e9}.phase-track .compute{background:#3768dd}.phase-track .communication{background:#e3a94e}.phase-row b{text-align:right;color:#41536d;font-weight:600}.phase-note{padding:0 21px 19px;font-size:12px;color:#8693a5}
+
 </style>
 </head>
 <body>
@@ -73,6 +76,12 @@ button:active{transform:translateY(1px)}
   <article class="card"><small>HOST MEMORY</small><div class="value" data-resource="memory">682 <span>GiB</span></div><div class="note">working set · 4 nodes</div></article>
   <article class="card"><small>FABRIC TX / RX</small><div class="value" data-resource="network">126 <span>Gbps</span></div><div class="note">RoCE/RDMA · peak egress</div></article>\n  <article class="card"><small>GPU MEMORY · MEAN</small><div class="value" data-resource="gpu-memory">173 <span>GiB</span></div><div class="note">DCGM exporter · allocated</div></article>
   <article class="card"><small>STORAGE LATENCY · P95</small><div class="value warn" data-resource="storage">8.7 <span>ms</span></div><div class="note warn">node-02 NVMe queue depth 32</div></article>
+</section>
+
+<section class="panel full" id="phase-panel">
+  <div class="head"><div><h2>Step phase budget</h2><p>framework timer 기준 data wait · compute · communication p95</p></div><span class="muted" id="phase-api-state">summary API</span></div>
+  <div class="phase-grid"><div class="phase-row"><label>Data wait</label><div class="phase-track"><span id="phase-data" class="data"></span></div><b id="phase-data-label">1.6 s</b></div><div class="phase-row"><label>Compute</label><div class="phase-track"><span id="phase-compute" class="compute"></span></div><b id="phase-compute-label">8.2 s</b></div><div class="phase-row"><label>Communication</label><div class="phase-track"><span id="phase-communication" class="communication"></span></div><b id="phase-communication-label">5.8 s</b></div></div>
+  <div class="phase-note">phase timer는 overlap될 수 있으므로 합계가 step p95보다 클 수 있습니다. collective의 원인은 selected trace로 추가 확인합니다.</div>
 </section>
 
 <section class="panel full" id="interconnect-panel">
@@ -241,6 +250,20 @@ button:active{transform:translateY(1px)}
     setValue('[data-resource="network"]', Number(m.network_transmit_gbps).toFixed(0), "Gbps");
     setValue('[data-resource="gpu-memory"]', Number(m.gpu_memory_used_gib).toFixed(0), "GiB");
     setValue('[data-resource="storage"]', Number(m.storage_latency_ms_p95).toFixed(1), "ms");
+    const phase = [
+      ["data", Number(m.training_data_wait_seconds_p95)],
+      ["compute", Number(m.training_compute_seconds_p95)],
+      ["communication", Number(m.training_communication_seconds_p95)]
+    ];
+    const phaseMax = Math.max.apply(null, phase.map(item => item[1])) || 1;
+    phase.forEach(item => {
+      const key = item[0]; const value = item[1];
+      const bar = document.getElementById("phase-" + key); const label = document.getElementById("phase-" + key + "-label");
+      if (bar) bar.style.width = Math.min(100, value / phaseMax * 100) + "%";
+      if (label) label.textContent = value.toFixed(1) + " s";
+    });
+    const phaseState = document.getElementById("phase-api-state");
+    if (phaseState) phaseState.textContent = "GET /api/runs/" + data.run_id + "/summary.json · 200";
     const title = document.querySelector("#diagnostic-panel h3");
     const message = document.querySelector("#diagnostic-panel h3 + p");
     if (title) title.textContent = data.diagnostic.title;
