@@ -11,3 +11,25 @@
 ## 운영 서비스로 확장
 
 실제 서비스에서는 브라우저가 Prometheus나 credential에 직접 접근하지 않도록, 인증된 server API와 run registry를 대시보드 앞에 둡니다. 이 데모는 그 UI 계약을 검증하기 위한 공개 화면입니다.
+
+
+## Mock API
+
+화면의 `Mock API explorer`는 아래 정적 JSON endpoint를 브라우저의 `fetch`로 직접 호출합니다.
+
+- `GET /api/runs.json`: run registry
+- `GET /api/runs/<run_id>/summary.json`: training, CPU, memory, GPU, network, storage, checkpoint summary
+- `GET /api/runs/<run_id>/interconnect.json`: node↔node RoCE/RDMA와 GPU↔GPU NVLink/PCIe matrix
+- `GET /api/runs/<run_id>/storage.json`: device throughput, IOPS, latency, queue depth, checkpoint path
+
+현재 endpoint는 GitHub Pages에서 제공하는 합성 JSON입니다. 실제 서비스로 전환할 때는 같은 응답 계약을 인증된 Next.js/Go API가 제공하고, API 서버가 Prometheus·DCGM·Node Exporter·Ray·run registry를 조회하도록 바꾸면 됩니다.
+
+## Covered Signals
+
+`profiling` 브랜치의 metric vocabulary를 기준으로 다음 화면을 포함합니다.
+
+- training throughput, step/collective time, GPU utilization·memory
+- host CPU·memory pressure, network/RDMA throughput
+- node↔node와 GPU↔GPU interconnect utilization·throughput·latency
+- storage read/write, IOPS, latency, queue depth
+- checkpoint size, save/load duration, checkpoint throughput
