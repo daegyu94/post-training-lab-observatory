@@ -19,6 +19,15 @@ button:active{transform:translateY(1px)}
 #demo-play.playing{background:#3868df;border-color:#3868df;color:#fff}
 @media(max-width:600px){.toast{right:18px;bottom:18px;left:18px}.gpu{min-height:58px}}
 
+
+.service-preview{border-top:1px solid #e5ebf3;margin:0 21px 20px;padding-top:17px}
+.service-head{display:flex;gap:14px;justify-content:space-between;align-items:center}.service-head h3{font-size:14px;margin:0}.service-head p{margin:5px 0 0;font-size:12px;color:#77869a}
+.service-state{display:flex;align-items:center;gap:8px;font-size:12px;color:#6f7f95}.state-dot{width:8px;height:8px;border-radius:50%;background:#a5b1c1}.service-preview.connected .state-dot{background:#29a66f;box-shadow:0 0 0 4px #dff5eb}.service-preview.connected .service-state{color:#16764b}
+.service-grid{display:none;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:15px}.service-preview.connected .service-grid{display:grid}
+.service-grid article{border:1px solid #dfe7f2;border-radius:6px;padding:12px;background:#f9fbfe}.service-grid small{display:block}.service-grid b{display:block;font-size:13px;margin:7px 0;color:#33445d}.service-grid p{font-size:12px;color:#738299;line-height:1.5;margin:0}
+.api-list{display:none;margin:12px 0 0;padding:10px 12px;border-left:3px solid #7798ed;background:#f4f7ff;color:#5f718c;font:12px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace}.service-preview.connected .api-list{display:block}
+@media(max-width:700px){.service-head{align-items:flex-start;flex-direction:column}.service-grid{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -39,7 +48,12 @@ button:active{transform:translateY(1px)}
 <div class="gpurow"><span class="node">▣ node-03</span><div class="cells"><span class="gpu">GPU 0<strong>88%</strong></span><span class="gpu">GPU 1<strong>89%</strong></span><span class="gpu">GPU 2<strong>90%</strong></span><span class="gpu">GPU 3<strong>91%</strong></span><span class="gpu">GPU 4<strong>92%</strong></span><span class="gpu">GPU 5<strong>93%</strong></span><span class="gpu">GPU 6<strong>88%</strong></span><span class="gpu">GPU 7<strong>89%</strong></span></div></div><div class="legend">낮음　▰ ▰ ▰　높음</div></article>
 <article class="panel"><div class="head"><h2>Run context</h2><span class="muted">CONFIGURATION</span></div><dl class="context"><dt>Model</dt><dd>Atlas 1T MoE · 가정</dd><dt>Parallelism</dt><dd>TP 8 · PP 4 · DP 1 · CP 1</dd><dt>Accelerator</dt><dd>B300 · 가정 환경</dd><dt>Interconnect</dt><dd>400 Gbps fabric · 가정</dd><dt>Dataset</dt><dd>synthetic instruction mixture</dd><dt>Captured</dt><dd>2026-09-05 / 60 min</dd></dl></article></section>
 <section class="panel full"><div class="head"><div><h2>Rank diagnostics</h2><p>global rank ↔ node ↔ local GPU · 실제 수집 전 화면 계약 예시</p></div><span class="muted">TP 8 · PP 4 · DP 1 · CP 1</span></div><table><thead><tr><th>Global rank</th><th>Node / GPU</th><th>Utilization</th><th>Memory</th><th>Step time</th><th>Collective</th><th>분석</th></tr></thead><tbody><tr><td>rank-08</td><td>node-01 / GPU 0</td><td>90%</td><td>173 GiB</td><td>12.8s</td><td>2.2s</td><td class="link">정상 비교군</td></tr><tr class="hot"><td>rank-16</td><td>node-02 / GPU 0</td><td>54%</td><td>166 GiB</td><td>16.0s</td><td>5.8s</td><td class="link">선택 trace 대상</td></tr><tr class="hot"><td>rank-19</td><td>node-02 / GPU 3</td><td>63%</td><td>166 GiB</td><td>16.4s</td><td>5.8s</td><td class="link">선택 trace 대상</td></tr></tbody></table></section>
-<section class="panel full"><div class="head"><div><h2>From simulation to internal service</h2><p>동일한 화면 계약을 유지하며 data provider를 교체하는 구조</p></div><span class="muted">SOURCE: SYNTHETIC</span></div><div class="architecture"><article><b>▣</b><h3>Collection</h3><p>Node Exporter · DCGM<br>Framework timers</p><small>향후 연결</small></article><span class="arrow">→</span><article><b>▤</b><h3>Data providers</h3><p>Prometheus · Run DB<br>Artifact storage</p><small>현재: typed fixtures</small></article><span class="arrow">→</span><article><b>◇</b><h3>Read-only API</h3><p>실험 목록 · GPU/rank<br>요약 · time series</p><small>향후 서버 API</small></article><span class="arrow">→</span><article><b>◈</b><h3>Observatory</h3><p>실험 비교 · 병목 탐색<br>JSON report export</p><small>현재 화면 계약</small></article></div></section>
+<section class="panel full"><div class="head"><div><h2>From simulation to internal service</h2><p>동일한 화면 계약을 유지하며 data provider를 교체하는 구조</p></div><span class="muted">SOURCE: SYNTHETIC</span></div><section id="service-preview" class="service-preview" aria-label="Internal service connection preview">
+  <div class="service-head"><div><h3>Internal service connection preview</h3><p>실제 API를 호출하지 않는 화면 계약 미리보기</p></div><div class="service-state"><span class="state-dot"></span><span id="service-state-text">데모 세션 미연결</span><button id="service-connect" type="button">서비스 모드 미리보기</button></div></div>
+  <div class="service-grid"><article><small>BROWSER</small><b>Observatory UI</b><p>자격 증명 없이 backend의 읽기 전용 API만 요청</p></article><article><small>ACCESS LAYER</small><b>SSO · RBAC · audit</b><p>project: atlas<br>role: post-training-engineer</p></article><article><small>INTERNAL PROVIDERS</small><b>Run registry · Prometheus</b><p>allowlist query와 범위·시간 제한을 서버에서 적용</p></article></div>
+  <div class="api-list" id="api-list">GET /api/runs/pt-1042/summary&nbsp;&nbsp;→&nbsp;&nbsp;200 (synthetic)<br>GET /api/runs/pt-1042/metrics?window=60m&nbsp;&nbsp;→&nbsp;&nbsp;cached 30s · allowlisted</div>
+</section>
+<div class="architecture"><article><b>▣</b><h3>Collection</h3><p>Node Exporter · DCGM<br>Framework timers</p><small>향후 연결</small></article><span class="arrow">→</span><article><b>▤</b><h3>Data providers</h3><p>Prometheus · Run DB<br>Artifact storage</p><small>현재: typed fixtures</small></article><span class="arrow">→</span><article><b>◇</b><h3>Read-only API</h3><p>실험 목록 · GPU/rank<br>요약 · time series</p><small>향후 서버 API</small></article><span class="arrow">→</span><article><b>◈</b><h3>Observatory</h3><p>실험 비교 · 병목 탐색<br>JSON report export</p><small>현재 화면 계약</small></article></div></section>
 <section class="twocol"><article class="panel padded"><h2>사내 운영 전 필요한 연결</h2><ul><li>SSO / RBAC: 프로젝트·클러스터 접근 제어</li><li>서버측 Prometheus query allowlist, timeout, 범위 제한</li><li>run_id ↔ scheduler job ↔ node/GPU allocation 기록</li><li>지속 저장, 감사 로그, artifact 보존 정책</li></ul><p class="muted">GitHub Pages는 정적 파일만 제공하므로 이 데모는 실제 collector, 사내 인증, 영속 DB와 연결하지 않습니다.</p></article><article class="panel padded"><h2>UX 참고 구현</h2><p class="muted">실험 탐색·비교는 MLflow, node/rank drill-down은 Ray, 공통 시간축·필터는 Grafana의 방식을 참고했습니다.</p><a href="https://github.com/mlflow/mlflow">MLflow · experiment comparison ↗</a><a href="https://docs.ray.io/en/latest/cluster/metrics.html">Ray · node / worker drill-down ↗</a><a href="https://grafana.com/docs/grafana/latest/dashboards/variables/">Grafana · shared filters ↗</a></article></section>
 <footer><span>POSTTRAIN OBSERVATORY / SFT Lab</span><span>Simulation data · static GitHub Pages demo</span></footer>
 </main><div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -121,6 +135,15 @@ button:active{transform:translateY(1px)}
     const node = String(Math.floor(i / 8)).padStart(2, "0"); const rank = i;
     notify("node-" + node + " / GPU " + (i % 8) + " 선택 · global rank-" + String(rank).padStart(2, "0"));
   }));
+  const servicePreview = document.getElementById("service-preview");
+  const connectButton = document.getElementById("service-connect");
+  const stateText = document.getElementById("service-state-text");
+  connectButton.addEventListener("click", () => {
+    const connected = servicePreview.classList.toggle("connected");
+    connectButton.textContent = connected ? "서비스 모드 종료" : "서비스 모드 미리보기";
+    stateText.textContent = connected ? "데모 세션 연결됨 · read-only" : "데모 세션 미연결";
+    notify(connected ? "SSO/RBAC와 read-only API를 거친 합성 연결 경로를 표시합니다." : "정적 대시보드 모드로 돌아왔습니다.");
+  });
   document.getElementById("export-report").addEventListener("click", () => {
     const d = values[current]; const report = { demo: true, generated_at: new Date().toISOString(), experiment: current, metrics: d, note: "Synthetic demo data only; not a benchmark result." };
     const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], {type:"application/json"}));
