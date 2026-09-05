@@ -3,7 +3,7 @@
   "run_id": "pt-1042",
   "source": "static-mock-api",
   "window": "last_60m",
-  "units": {"throughput": "GB/s", "utilization": "%", "latency": "us"},
+  "units": {"throughput": "Gbps", "utilization": "%", "latency": "us"},
   "links": ["NVLink 5 intra-node", "RoCE/RDMA inter-node"],
   "node2node": {
     "labels": ["node-00","node-01","node-02","node-03"],
