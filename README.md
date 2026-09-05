@@ -20,7 +20,7 @@
 - `GET /api/runs.json`: run registry
 - `GET /api/runs/<run_id>/summary.json`: training, CPU, memory, GPU, network, storage, checkpoint summary
 - `GET /api/runs/<run_id>/interconnect.json`: node↔node RoCE/RDMA와 GPU↔GPU NVLink/PCIe matrix
-- `GET /api/runs/<run_id>/storage.json`: device throughput, IOPS, latency, queue depth, checkpoint path
+- `GET /api/runs/<run_id>/storage.json`: device throughput, IOPS, latency, queue depth, checkpoint path (현재 `pt-1042`, `pt-1041`, `pt-1038` 비교 run 제공)
 
 현재 endpoint는 GitHub Pages에서 제공하는 합성 JSON입니다. 실제 서비스로 전환할 때는 같은 응답 계약을 인증된 Next.js/Go API가 제공하고, API 서버가 Prometheus·DCGM·Node Exporter·Ray·run registry를 조회하도록 바꾸면 됩니다.
 
