@@ -1,12 +1,18 @@
-# SFT Lab Observatory
+# Post-Training Lab Observatory
 
-대규모 LLM post-training의 멀티노드·멀티 GPU 병목을 탐색하는 공개 dashboard PoC입니다.
+LLM post-training의 SFT와 agentic RL workload에서 멀티노드·멀티 GPU 병목을 탐색하는 공개 dashboard PoC이자 관측 실습 저장소입니다. 학습 실행과 공통 contract는 [Post-Training Lab](https://github.com/daegyu94/post-training-lab)이 관리합니다.
 
-- [Live dashboard](https://daegyu94.github.io/sft-lab-observatory/)
-- [Profiling labs and metric vocabulary](https://github.com/daegyu94/sft-lab/tree/profiling)
-- [Metric contract](https://github.com/daegyu94/sft-lab/blob/profiling/docs/metric-schema.md)
+- [Live dashboard](https://daegyu94.github.io/post-training-lab-observatory/)
+- [Profiling labs and metric vocabulary](https://github.com/daegyu94/post-training-lab/tree/profiling)
+- [Metric contract](https://github.com/daegyu94/post-training-lab/blob/profiling/docs/metric-schema.md)
 
 모든 수치와 이벤트는 합성 데이터입니다. 실제 benchmark 결과나 사내 시스템 연결을 포함하지 않습니다.
+
+## Start a Lab
+
+Python 3와 브라우저만 있으면 [첫 관측 실습](docs/labs/01-observe-runs.md)을 실행할 수 있습니다. GPU나 training framework 설치는 필요하지 않습니다. SFT run 비교, RL metric 탐색과 snapshot export를 합성 데이터로 연습합니다.
+
+새 관측 시나리오는 [확장 가이드](docs/adding-scenarios.md)에 따라 registry와 fixture를 함께 추가합니다. DPO 등 새로운 학습 방식은 대응 metric과 화면을 구현하기 전까지 지원되는 것으로 표시하지 않습니다.
 
 ## Dashboard
 
@@ -38,7 +44,7 @@ GitHub Pages가 아래 JSON endpoint를 제공하며 dashboard는 브라우저�
 
 ## Metric Sources
 
-Dashboard vocabulary는 `sft-lab`의 [`profiling/config/metrics.json`](https://github.com/daegyu94/sft-lab/blob/profiling/config/metrics.json)과 [`metrics.schema.json`](https://github.com/daegyu94/sft-lab/blob/profiling/config/metrics.schema.json)을 기준으로 합니다.
+Dashboard vocabulary는 `post-training-lab`의 [`profiling/config/metrics.json`](https://github.com/daegyu94/post-training-lab/blob/profiling/config/metrics.json)과 [`metrics.schema.json`](https://github.com/daegyu94/post-training-lab/blob/profiling/config/metrics.schema.json)을 기준으로 합니다.
 
 - training: framework adapter, timer, selected trace
 - rollout/agent: verl, inference engine, OpenTelemetry
@@ -50,3 +56,7 @@ Dashboard vocabulary는 `sft-lab`의 [`profiling/config/metrics.json`](https://g
 - checkpoint: framework adapter와 timer
 
 실 서비스에서는 이 응답 계약을 유지한 채 JSON fixture를 인증된 API로 교체합니다. 브라우저가 Prometheus credential을 갖지 않도록 API 서버가 query allowlist, timeout, RBAC와 audit log를 적용하는 구조가 적합합니다.
+
+## Repository Migration
+
+기존 clone에서는 `git remote set-url origin git@github.com:daegyu94/post-training-lab-observatory.git`로 remote를 갱신하세요. 저장소는 `sft-lab-observatory`에서 이름을 변경했으며, GitHub Pages의 기존 주소는 자동 리디렉션되지 않습니다. 위의 새 Live dashboard 링크를 사용하세요.

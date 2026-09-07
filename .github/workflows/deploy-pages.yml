@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - index.html
+      - api/**
+      - docs/**
       - README.md
       - .github/workflows/deploy-pages.yml
   workflow_dispatch:
