@@ -7,6 +7,7 @@ on:
       - index.html
       - telemetry.html
       - api/**
+      - assets/**
       - docs/**
       - README.md
       - .github/workflows/deploy-pages.yml
@@ -36,7 +37,7 @@ jobs:
         run: |
           mkdir _site
           cp index.html telemetry.html _site/
-          cp -r api docs _site/
+          cp -r api docs assets _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

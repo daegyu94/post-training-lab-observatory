@@ -27,7 +27,12 @@ Python 3와 브라우저만 있으면 [첫 관측 실습](docs/labs/01-observe-r
 | Workload | SFT efficiency 또는 verl/Ray 기반 agentic RL metric |
 | API explorer | 정적 JSON endpoint의 실제 HTTP 요청과 응답 |
 
-Run selector에서 Megatron SFT, FSDP, agentic RL 시나리오를 전환할 수 있습니다. `Live demo`는 선택한 run의 합성 throughput stream을 재생하고, `Export JSON`은 현재 화면의 전체 profiling snapshot을 내려받습니다.
+Run selector에서 Megatron SFT, FSDP, agentic RL 시나리오를 전환할 수 있습니다.
+`Live demo`는 1초마다 합성 1분을 재생하며 throughput, step timing, CPU/GPU, memory, network, storage, data path와 workload 지표를 함께 갱신합니다.
+설정값과 완료된 작업의 기록·누적 counter는 유지하며, 실측 데이터가 아닙니다.
+`Pause demo`는 마지막 샘플을 유지하고, run 전환은 해당 fixture로 초기화합니다.
+`WINDOW`는 throughput 차트에 표시할 합성 시간 구간을 선택합니다.
+`Export JSON`은 현재 화면의 profiling snapshot과 데모 샘플 시각을 내려받습니다.
 
 ## Mock API
 
