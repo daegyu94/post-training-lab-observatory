@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - index.html
+      - telemetry.html
       - api/**
       - docs/**
       - README.md
@@ -31,8 +32,13 @@ jobs:
       - uses: actions/configure-pages@v5
         with:
           enablement: true
+      - name: Prepare public assets only
+        run: |
+          mkdir _site
+          cp index.html telemetry.html _site/
+          cp -r api docs _site/
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4

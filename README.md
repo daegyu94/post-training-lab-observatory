@@ -6,7 +6,9 @@ LLM post-training의 SFT와 agentic RL workload에서 멀티노드·멀티 GPU �
 - [Profiling labs and metric vocabulary](https://github.com/daegyu94/post-training-lab/tree/profiling)
 - [Metric contract](https://github.com/daegyu94/post-training-lab/blob/profiling/docs/metric-schema.md)
 
-모든 수치와 이벤트는 합성 데이터입니다. 실제 benchmark 결과나 사내 시스템 연결을 포함하지 않습니다.
+기본 시나리오의 수치와 이벤트는 합성 데이터입니다.
+[Spark measured telemetry](telemetry.html)는 별도 수집한 실제 host metric snapshot을 표시합니다.
+수집·게시 절차는 [Spark 실습 가이드](docs/labs/01-observe-runs.md#spark-cluster-publish-real-measurements-to-observatory)를 참고하세요.
 
 ## Start a Lab
 
