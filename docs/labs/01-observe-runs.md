@@ -18,7 +18,7 @@ python -m http.server 8000 --bind 127.0.0.1
 
 ## Exercise
 
-1. Run selector에서 `Atlas · baseline` (`pt-1041`)을 선택합니다. Overview의 throughput과 주요 phase, Data paths의 전송 경로, Storage의 checkpoint 지표를 기록합니다.
+1. 첫 화면의 Run history에서 저장된 이력을 살펴본 뒤, **Demo playground**를 엽니다. Run selector에서 `Atlas · baseline` (`pt-1041`)을 선택합니다. Overview의 throughput과 주요 phase, Data paths의 전송 경로, Storage의 checkpoint 지표를 기록합니다.
 2. `Atlas · communication study` (`pt-1042`)로 전환하고 같은 지표를 비교합니다. 어떤 phase와 resource가 병목 가설을 뒷받침하는지, 실제 측정이라면 추가로 어떤 counter나 trace가 필요한지 적습니다. 합성 시나리오 간 차이를 실제 성능 개선이나 인과관계로 해석하지 않습니다.
 3. `Orion · agentic RL` (`rl-2051`)의 Workload를 확인합니다. SFT 화면과 다른 rollout·agent 지표를 찾아 기록합니다. 이 화면은 RL training command를 실행하지 않습니다.
 4. API explorer에서 선택한 run의 `summary.json`과 `data-movement.json`을 요청합니다. HTTP 응답과 화면 값의 연결을 확인합니다.
@@ -36,7 +36,7 @@ JSON 요청이 실패하면 저장소 루트에서 서버를 실행했는지, UR
 
 ## Spark Cluster: Publish Real Measurements to Observatory
 
-합성 replay를 마친 뒤 `spark1`, `spark2`의 실제 host telemetry를 같은 Observatory 사이트의 **Spark · Measured telemetry**에서 확인할 수 있습니다.
+합성 replay를 마친 뒤 `spark1`, `spark2`의 실제 host telemetry를 같은 Observatory 사이트의 **Run history**에서 확인할 수 있습니다.
 두 노드는 독립적으로 수집하며, 이 단계 자체가 multi-node training을 실행하지는 않습니다.
 [GitHub Pages는 정적 호스팅](https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)이므로 agent의 HTTP POST를 직접 받을 수 없습니다.
 Controller의 수집 API가 push를 받고, 선택한 run의 JSON snapshot을 repository에 게시하면 Pages가 표시합니다.
@@ -109,7 +109,7 @@ Token은 브라우저 저장소에 보존하지 않습니다.
 ### 3. Export and Publish the Selected Run
 
 ```bash
-python3 -m telemetry.export --database artifacts/spark.sqlite3 --run-id "$run_id"
+python3 -m telemetry.export --database artifacts/spark.sqlite3 --run-id "$run_id" --archive-dir api/history
 python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
@@ -118,9 +118,10 @@ JSON은 선택한 run ID, node 이름, 수집 시각과 허용된 host metric만
 공개할 node 이름은 agent의 `--node`로 지정할 수 있습니다.
 IP, token, 환경 변수, model 입력과 training trace는 export하지 않습니다.
 
-변경 내용을 검토한 뒤 `api/telemetry.json`과 구현 파일을 PR로 올려 main에 반영합니다.
-기존 Pages workflow가 배포한 후 [Observatory](https://daegyu94.github.io/post-training-lab-observatory/)의 **Spark · Measured telemetry** 또는 `telemetry.html`에서 결과를 확인합니다.
-후속 실습에서는 새 run을 export하고 `api/telemetry.json`을 갱신하면 됩니다.
+변경 내용을 검토한 뒤 `api/telemetry.json`, `api/history/`와 구현 파일을 PR로 올려 main에 반영합니다.
+기존 Pages workflow가 배포한 후 [Observatory](https://daegyu94.github.io/post-training-lab-observatory/)의 **Run history**에서 보관된 결과를 확인합니다.
+후속 실습에서는 새 run ID로 export하고 `api/history/`의 새 archive와 index를 함께 게시합니다.
+기존 기록을 덮어쓰지 않는 저장 방식은 [Run history 가이드](../run-history.md)를 참고하세요.
 Snapshot은 마지막 게시 시점의 결과이며 Refresh로 새 측정을 생성하지 않습니다.
 공개 사이트에 collector token을 넣거나 private HTTP endpoint를 직접 연결하지 않습니다.
 

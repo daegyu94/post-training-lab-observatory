@@ -7,7 +7,7 @@ LLM post-training의 SFT와 agentic RL workload에서 멀티노드·멀티 GPU �
 - [Metric contract](https://github.com/daegyu94/post-training-lab/blob/profiling/docs/metric-schema.md)
 
 기본 시나리오의 수치와 이벤트는 합성 데이터입니다.
-[Spark measured telemetry](telemetry.html)는 별도 수집한 실제 host metric snapshot을 표시합니다.
+Run history는 합성 학습 예제와 별도 수집한 실제 host 관측 기록을 함께 보관하며 데이터 출처를 구분합니다.
 수집·게시 절차는 [Spark 실습 가이드](docs/labs/01-observe-runs.md#spark-cluster-publish-real-measurements-to-observatory)를 참고하세요.
 
 ## Start a Lab
@@ -15,6 +15,12 @@ LLM post-training의 SFT와 agentic RL workload에서 멀티노드·멀티 GPU �
 Python 3와 브라우저만 있으면 [첫 관측 실습](docs/labs/01-observe-runs.md)을 실행할 수 있습니다. GPU나 training framework 설치는 필요하지 않습니다. SFT run 비교, RL metric 탐색과 snapshot export를 합성 데이터로 연습합니다.
 
 새 관측 시나리오는 [확장 가이드](docs/adding-scenarios.md)에 따라 registry와 fixture를 함께 추가합니다. DPO 등 새로운 학습 방식은 대응 metric과 화면을 구현하기 전까지 지원되는 것으로 표시하지 않습니다.
+
+## Run History
+
+첫 화면에서 실행 이력을 검색·필터링하고, run별 설정·타임라인·리소스와 실행 간 비교를 확인합니다.
+완료된 기록은 run별 JSON archive로 보관하므로 Pages 조회에는 DB가 필요하지 않습니다.
+기존 SQLite collector에서 관측값을 export하거나 profiling report를 archive에 추가하는 절차는 [Run history 가이드](docs/run-history.md)를 참고하세요.
 
 ## Dashboard
 

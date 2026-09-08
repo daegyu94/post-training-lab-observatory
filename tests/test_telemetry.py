@@ -45,7 +45,9 @@ class TelemetryTest(unittest.TestCase):
                 self.assertEqual(e.exception.code,400)
                 with request() as r: self.assertEqual(len(json.load(r)['samples']),1)
                 output=Path(tmp)/'snapshot.json'
-                export(database,'test',output)
+                archive_dir=Path(tmp)/'history'
+                export(database,'test',output,archive_dir)
+                self.assertEqual(json.loads((archive_dir/'index.json').read_text())['runs'][0]['status'],'captured')
                 self.assertFalse(json.loads(output.read_text())['synthetic'])
                 with self.assertRaises(ValueError): export(database,'missing',output)
             finally:
