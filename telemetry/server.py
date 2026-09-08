@@ -52,6 +52,12 @@ def make_server(address, database, token):
         def do_GET(self):
             if self.path in ('/', '/telemetry.html'):
                 return self.reply(200, (ROOT / 'telemetry.html').read_bytes(), 'text/html; charset=utf-8')
+            theme_assets = {
+                '/assets/theme.js': 'text/javascript; charset=utf-8',
+                '/assets/theme.css': 'text/css; charset=utf-8',
+            }
+            if self.path in theme_assets:
+                return self.reply(200, (ROOT / self.path[1:]).read_bytes(), theme_assets[self.path])
             if self.path == '/healthz':
                 return self.reply(200, {'status': 'ok'})
             if self.path != '/api/telemetry':

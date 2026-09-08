@@ -1,11 +1,16 @@
 <!doctype html>
 <html lang="ko">
+<head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Spark measured telemetry · Observatory</title>
+<script src="assets/theme.js"></script>
 <style>
 body{font:16px system-ui;background:#101722;color:#e4edf7;max-width:1200px;margin:40px auto;padding:0 20px}a{color:#80c7ff}button,input,select{font:inherit;padding:8px;background:#202d40;color:inherit;border:1px solid #61748a;border-radius:5px}table{border-collapse:collapse;width:100%;margin:24px 0}th,td{text-align:left;padding:12px;border-bottom:1px solid #415169}.scroll{overflow:auto}svg{width:100%;height:190px;background:#182438}p{line-height:1.6}#status{color:#9ed2ff}
 </style>
-<a href="index.html">Observatory / Synthetic scenarios</a>
+<link rel="stylesheet" href="assets/theme.css">
+</head>
+<body class="measured-page">
+<div class="measured-toolbar"><a href="index.html">Observatory / Synthetic scenarios</a><label class="theme-control">Theme <select data-theme-select aria-label="Color theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>
 <h1>Spark measured telemetry</h1>
 <p>REAL MEASUREMENTS · Linux /proc · 노드 전체 CPU, 메모리와 NIC 관측값입니다. Training throughput, GPU, phase와 distributed 성능은 측정하지 않습니다.</p>
 <p>Spark GB10 UMA: CPU와 GPU가 같은 물리 메모리를 공유합니다. System used는 CPU 전용 사용량이 아니며 GPU 메모리와 더하지 않습니다. GPU framebuffer 사용량 N/A는 0이 아닙니다. Available과 swap을 함께 확인하세요. <a href="docs/labs/01-observe-runs.md#spark-gb10-unified-memory">Memory guide</a></p>
@@ -32,4 +37,5 @@ async function refresh(){try{const local=$('source').value==='collector',respons
 $('source').onchange=()=>{$('auth').hidden=$('source').value!=='collector';refresh()};$('refresh').onclick=refresh;$('run').onchange=render;$('download').onclick=()=>{if(!data)return;const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='measured-telemetry.json';a.click();URL.revokeObjectURL(url)};
 if(location.port==='8001'){$('source').value='collector';$('auth').hidden=false}refresh();
 </script>
+</body>
 </html>

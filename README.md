@@ -34,6 +34,9 @@ Run selector에서 Megatron SFT, FSDP, agentic RL 시나리오를 전환할 수 
 `WINDOW`는 throughput 차트에 표시할 합성 시간 구간을 선택합니다.
 `Export JSON`은 현재 화면의 profiling snapshot과 데모 샘플 시각을 내려받습니다.
 
+`THEME`에서 System, Light, Dark를 선택할 수 있습니다.
+기본값은 시스템 설정을 따르며, 선택은 브라우저에 저장되어 대시보드와 실측 telemetry 페이지에 공통으로 적용됩니다.
+
 ## Mock API
 
 GitHub Pages가 아래 JSON endpoint를 제공하며 dashboard는 브라우저의 `fetch`로 이를 직접 호출합니다.

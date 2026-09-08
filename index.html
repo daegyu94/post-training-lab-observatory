@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="description" content="대규모 post-training의 멀티노드·멀티 GPU 병목을 탐색하는 합성 profiling dashboard">
 <title>Post-Training Lab Observatory</title>
+<script src="assets/theme.js"></script>
 <style>
 :root{--bg:#f4f6fa;--surface:#fff;--surface-2:#f8faff;--ink:#15233a;--muted:#52627a;--line:#dde5ef;--blue:#3165df;--blue-2:#e9f0ff;--navy:#101b2e;--green:#1e9b67;--amber:#b97820;--red:#c45151;--shadow:0 8px 24px rgba(26,44,77,.07)}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.6 Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",sans-serif}button,select{font:inherit}button{cursor:pointer}.app{min-height:100vh;display:grid;grid-template-columns:232px minmax(0,1fr)}
@@ -35,6 +36,7 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #729
 @media(max-width:820px){.app{display:block}.sidebar{position:static;height:auto;padding:12px 14px;display:block}.brand{padding:0 4px 12px}.side-nav{display:flex;overflow:auto}.side-nav button,.side-nav a{white-space:nowrap;flex-shrink:0}.side-nav a{margin-bottom:0}.side-foot{display:none}.topbar{top:0;padding:11px 15px;align-items:flex-start}.top-title{display:none}.controls{width:100%;flex-wrap:wrap;margin:0}.controls label:first-child{flex:1}.controls select{max-width:100%}.content{padding:18px 15px 35px}.context-row{display:block}.status-group{margin-top:10px}.kpis{grid-template-columns:repeat(2,1fr)}.matrix-layout{grid-template-columns:1fr}.gpu-grid{gap:3px}.gpu{min-height:50px}.workload-grid{grid-template-columns:1fr}}
 @media(max-width:520px){.controls label{width:100%;display:flex;align-items:center}.controls label select{flex:1}.controls .button{flex:1}.kpis,.resource-strip,.peak-grid{grid-template-columns:1fr 1fr}.kpi{padding:16px}.kpi-value{font-size:28px;line-height:1.3}.kpi-value span{font-size:13px}.eyebrow{font-size:13px}.resource b{font-size:22px}.phase-row{grid-template-columns:120px minmax(0,1fr) 60px}.gpu-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.node-label{flex-wrap:wrap;gap:4px}.panel-head{padding-left:13px;padding-right:13px}.node-block{padding-left:13px;padding-right:13px}.table th,.table td{padding:9px 10px}.toast{left:16px;right:16px;bottom:16px}}
 </style>
+<link rel="stylesheet" href="assets/theme.css">
 </head>
 <body>
 <div class="app">
@@ -57,6 +59,7 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #729
       <div class="controls">
         <label>RUN<select id="run-select" aria-label="Training run"><option>Loading runs…</option></select></label>
         <label>WINDOW<select id="window-select" aria-label="Time window"><option value="15">15m</option><option value="60" selected>60m</option><option value="180">3h</option></select></label>
+        <label class="theme-control">THEME<select data-theme-select aria-label="Color theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
         <button class="button" id="demo-button" aria-pressed="false">▷ Live demo</button>
         <button class="button primary" id="export-button">Export JSON</button>
       </div>
@@ -98,7 +101,7 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #729
           <article class="panel gpu-panel"><div class="panel-head"><div><h3>GPU allocation</h3><p>GPU를 선택하면 rank와 health signal을 확인할 수 있습니다</p></div><span class="source">DCGM EXPORTER</span></div><div id="gpu-allocation"></div></article>
           <aside class="panel inspector" id="gpu-inspector"><h3>GPU inspector</h3><p class="empty">GPU tile을 선택하세요. utilization, memory, power, temperature, clock과 error counter를 표시합니다.</p></aside>
         </div>
-        <article class="panel" style="margin-top:14px"><div class="panel-head"><div><h3>Interconnect matrix</h3><p>node↔node RDMA와 GPU↔GPU NVLink/PCIe 경로</p></div><span class="source" id="matrix-source">NCCL + FRAMEWORK TIMER</span></div><div class="matrix-toolbar"><label class="field">TOPOLOGY<select id="matrix-scope"><option value="node2node">Node ↔ node</option><option value="gpu2gpu">GPU ↔ GPU</option></select></label><label class="field">METRIC<select id="matrix-metric"><option value="utilization_percent">Utilization (%)</option><option value="throughput_gbps">Throughput (Gbps)</option><option value="latency_us">Latency (µs)</option></select></label><span class="api-status" id="matrix-status">—</span></div><div class="matrix-layout"><div class="matrix-wrap" id="matrix-host"></div><aside class="legend"><b>Matrix 해석</b><p><span class="swatch" style="background:#dce8ff"></span>낮은 값</p><p><span class="swatch" style="background:#e7ac54"></span>높은 값</p><p>대각선은 동일 endpoint입니다. GPU matrix는 대표 8-GPU group을 보여줍니다.</p><p>상시 NIC/DCGM 지표로 범위를 좁히고 NCCL baseline 또는 selected trace로 원인을 확인합니다.</p></aside></div></article>
+        <article class="panel" style="margin-top:14px"><div class="panel-head"><div><h3>Interconnect matrix</h3><p>node↔node RDMA와 GPU↔GPU NVLink/PCIe 경로</p></div><span class="source" id="matrix-source">NCCL + FRAMEWORK TIMER</span></div><div class="matrix-toolbar"><label class="field">TOPOLOGY<select id="matrix-scope"><option value="node2node">Node ↔ node</option><option value="gpu2gpu">GPU ↔ GPU</option></select></label><label class="field">METRIC<select id="matrix-metric"><option value="utilization_percent">Utilization (%)</option><option value="throughput_gbps">Throughput (Gbps)</option><option value="latency_us">Latency (µs)</option></select></label><span class="api-status" id="matrix-status">—</span></div><div class="matrix-layout"><div class="matrix-wrap" id="matrix-host"></div><aside class="legend"><b>Matrix 해석</b><p><span class="swatch" style="background:var(--matrix-low)"></span>낮은 값</p><p><span class="swatch" style="background:var(--matrix-high)"></span>높은 값</p><p>대각선은 동일 endpoint입니다. GPU matrix는 대표 8-GPU group을 보여줍니다.</p><p>상시 NIC/DCGM 지표로 범위를 좁히고 NCCL baseline 또는 selected trace로 원인을 확인합니다.</p></aside></div></article>
       </section>
 
       <section class="panel-view" data-panel="movement" hidden>
@@ -218,7 +221,7 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #729
     const node=state.resources.nodes.find(n=>n.node===button.dataset.node),gpu=node.gpus.find(g=>g.index===Number(button.dataset.gpu));
     $("gpu-inspector").innerHTML='<h3>'+node.node+' / GPU '+gpu.index+'</h3><dl><dt>Global rank</dt><dd>'+gpu.global_rank+'</dd><dt>Utilization</dt><dd>'+gpu.utilization_percent+'%</dd><dt>Memory</dt><dd>'+gpu.memory_used_gib+' GiB</dd><dt>Power</dt><dd>'+gpu.power_watts+' W</dd><dt>Temperature</dt><dd>'+gpu.temperature_celsius+' °C</dd><dt>Clock</dt><dd>'+gpu.clock_mhz+' MHz</dd><dt>Errors</dt><dd>'+gpu.errors_total+'</dd></dl>';
   }
-  function matrixColor(value,max,hot){if(!value)return"#edf1f6";const ratio=Math.min(1,value/max),hue=hot?44-ratio*13:218-ratio*18;return"hsl("+hue+" "+(38+ratio*35)+"% "+(96-ratio*38)+"%)"}
+  function matrixColor(value,max,hot){if(!value)return"var(--surface-2)";const ratio=Math.min(1,value/max),hue=hot?44-ratio*13:218-ratio*18;return"hsl("+hue+" "+(38+ratio*35)+"% "+(document.documentElement.dataset.theme==="dark"?16+ratio*13:96-ratio*38)+"%)"}
   function renderMatrix(){
     if(!state.interconnect)return;const scope=$("matrix-scope").value,metric=$("matrix-metric").value,block=state.interconnect[scope],values=block[metric],max=Math.max(...values.flat().filter(Boolean)),unit=metric==="utilization_percent"?"%":metric==="throughput_gbps"?" Gbps":" µs",hot=metric!=="throughput_gbps";
     let html='<table class="matrix"><thead><tr><th></th>'+block.labels.map(l=>"<th>"+l+"</th>").join("")+"</tr></thead><tbody>";
@@ -299,6 +302,7 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #729
   });
   $("export-button").addEventListener("click",()=>{if(!state.summary)return;const report={exported_at:new Date().toISOString(),synthetic:true,demo:{samples:state.tick,sampled_at:state.sampledAt,playing:state.playing,simulated_seconds_per_sample:60},run:state.run,summary:state.summary,resources:state.resources,interconnect:state.interconnect,data_movement:state.dataMovement,storage:state.storage},url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:"application/json"})),a=document.createElement("a");a.href=url;a.download=state.run.run_id+"-profiling-report.json";a.click();URL.revokeObjectURL(url);toast("Profiling report를 내보냈습니다.")});
   window.addEventListener("resize",()=>{if(state.summary){renderThroughput();renderStorage()}});
+  window.addEventListener("observatory-theme-change",()=>{if(state.interconnect)renderMatrix()});
   initialize();
 })();
 </script>

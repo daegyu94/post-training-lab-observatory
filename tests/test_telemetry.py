@@ -28,6 +28,15 @@ class TelemetryTest(unittest.TestCase):
             def request(data=None,token='x'*32):
                 return urlopen(Request(endpoint,data=None if data is None else json.dumps(data).encode(),headers={'Authorization':'Bearer '+token}),timeout=2)
             try:
+                base = endpoint.removesuffix('/api/telemetry')
+                for asset, mime in [('theme.js', 'text/javascript'), ('theme.css', 'text/css')]:
+                    with urlopen(base + '/assets/' + asset, timeout=2) as r:
+                        self.assertEqual(r.status, 200)
+                        self.assertEqual(r.headers.get_content_type(), mime)
+                        self.assertTrue(r.read())
+                with self.assertRaises(HTTPError) as missing:
+                    urlopen(base + '/assets/../telemetry/server.py', timeout=2)
+                self.assertEqual(missing.exception.code, 404)
                 with self.assertRaises(HTTPError) as e: request(sample,'wrong')
                 self.assertEqual(e.exception.code,401)
                 with request(sample) as r: self.assertEqual(r.status,201)
