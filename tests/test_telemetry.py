@@ -5,8 +5,8 @@ import threading
 import unittest
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
-from telemetry.server import make_server
-from telemetry.agent import metrics
+from telemetry.server import make_server, validate_framework
+from telemetry.agent import framework_samples, metrics
 from telemetry.export import export
 
 class TelemetryTest(unittest.TestCase):
@@ -44,6 +44,11 @@ class TelemetryTest(unittest.TestCase):
                 with self.assertRaises(HTTPError) as e: request(sample)
                 self.assertEqual(e.exception.code,400)
                 with request() as r: self.assertEqual(len(json.load(r)['samples']),1)
+                framework=dict(schema_version=1,run_id='test',framework='megatron',node='spark1',rank=0,local_rank=0,step=1,observed_at=1.0,metrics={'training_loss':1.25,'training_tokens_per_second':10.0},timers={'forward-backward':0.5})
+                framework_endpoint=base+'/api/framework-metrics'
+                with urlopen(Request(framework_endpoint,data=json.dumps(framework).encode(),headers={'Authorization':'Bearer '+'x'*32}),timeout=2) as r:self.assertEqual(r.status,201)
+                with urlopen(Request(framework_endpoint,headers={'Authorization':'Bearer '+'x'*32}),timeout=2) as r:
+                    body=json.load(r);self.assertEqual(body['source'],'framework-adapter');self.assertEqual(body['samples'][0]['metrics']['training_loss'],1.25)
                 output=Path(tmp)/'snapshot.json'
                 archive_dir=Path(tmp)/'history'
                 export(database,'test',output,archive_dir)
@@ -55,3 +60,17 @@ class TelemetryTest(unittest.TestCase):
             restarted=make_server(('127.0.0.1',0),database,'x'*32);restarted.server_close()
             export(database,'test',output)
             self.assertEqual(len(json.loads(output.read_text())['samples']),1)
+
+    def test_framework_validation_and_spool_deduplication(self):
+        sample=dict(schema_version=1,run_id='test',framework='trl',node='spark1',rank=0,local_rank=0,step=1,observed_at=1.0,metrics={'training_loss':1.0},timers={})
+        self.assertEqual(validate_framework(sample),sample)
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/'trl-rank-0.json';path.write_text(json.dumps(sample));seen={}
+            self.assertEqual(framework_samples(Path(tmp),seen),[sample])
+            self.assertEqual(framework_samples(Path(tmp),seen),[])
+        for change in [
+            {'framework':'unknown'}, {'rank':-1}, {'metrics':{'unknown':1}},
+            {'metrics':{'training_loss':float('nan')}}, {'timers':{'bad timer':1}},
+        ]:
+            invalid=dict(sample);invalid.update(change)
+            with self.assertRaises(ValueError):validate_framework(invalid)

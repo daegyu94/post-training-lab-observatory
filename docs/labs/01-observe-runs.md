@@ -77,7 +77,7 @@ SSH reverse tunnel은 각 Spark 노드의 loopback port를 controller collector�
 Token은 SSH 표준 입력으로 전달하며 명령 인자나 repository에 기록하지 않습니다.
 
 ```bash
-run_id="spark-host-$(date -u +%Y%m%dT%H%M%SZ)"
+run_id="<training-output-directory-name>"
 for node in spark1 spark2; do
   scp telemetry/agent.py "spark@$node:/tmp/observatory-agent.py"
 done
@@ -85,7 +85,7 @@ pids=()
 for node in spark1 spark2; do
   { cat artifacts/token; printf '\n'; } | \
     ssh -o ExitOnForwardFailure=yes -R 18001:127.0.0.1:8001 "spark@$node" \
-      "read -r OBSERVATORY_TOKEN; export OBSERVATORY_TOKEN; python3 /tmp/observatory-agent.py --endpoint http://127.0.0.1:18001 --run-id '$run_id' --samples 30 --interval 2" \
+      "read -r OBSERVATORY_TOKEN; export OBSERVATORY_TOKEN; python3 /tmp/observatory-agent.py --endpoint http://127.0.0.1:18001 --run-id '$run_id' --framework-metrics-dir '<backend-output-root>/$run_id/framework-metrics' --samples 30 --interval 2" \
       > "artifacts/$node.jsonl" &
   pids+=("$!")
 done
@@ -140,7 +140,9 @@ Snapshot은 마지막 게시 시점의 결과이며 Refresh로 새 측정을 생
 
 실습 evidence에는 run ID, 두 노드의 sample 수, CPU 범위, 수신 시간 구간, JSON 경로와 Pages 배포 URL을 기록합니다.
 실제 LLM 실습과 연결할 때에는 Spark에서 workload를 별도로 실행하면서 같은 run ID와 시간 구간으로 수집합니다.
-Training/phase metric은 framework adapter를 추가해야 하며 현재 host agent가 자동 수집하지 않습니다.
+`post-training-lab` runner로 TRL 또는 Megatron을 같은 `run_id`로 실행하면 agent가 `--framework-metrics-dir`의 rank별 최신 sample을 함께 전송합니다.
+화면은 2초마다 collector를 조회하며 loss, tokens/s, step time과 Megatron rank timer를 표시합니다.
+Framework metric 파일이 아직 없으면 host metric만 전송합니다.
 
 ### Cleanup
 

@@ -39,6 +39,29 @@ def metrics(before, after):
                 nic_receive_gbps=net[0], nic_transmit_gbps=net[1], interval_seconds=elapsed)
 
 
+def post(endpoint, token, path, data):
+    request = Request(endpoint.rstrip('/') + path, data=json.dumps(data).encode(), headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'})
+    with urlopen(request, timeout=10) as response:
+        if response.status != 201:
+            raise RuntimeError('collector rejected sample')
+
+
+def framework_samples(directory, seen):
+    if directory is None:
+        return []
+    samples = []
+    for path in sorted(directory.glob('*.json')):
+        try:
+            sample = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        marker = sample.get('observed_at')
+        if marker != seen.get(path):
+            seen[path] = marker
+            samples.append(sample)
+    return samples
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--endpoint', required=True)
@@ -46,19 +69,23 @@ def main():
     p.add_argument('--node', default=socket.gethostname())
     p.add_argument('--interval', type=float, default=2)
     p.add_argument('--samples', type=int, default=30)
+    p.add_argument('--framework-metrics-dir', type=Path)
     args = p.parse_args()
     if args.interval <= 0 or args.samples <= 0:
         p.error('interval and samples must be positive')
     token = os.environ['OBSERVATORY_TOKEN']
+    seen = {}
     before = counters()
     for _ in range(args.samples):
         time.sleep(args.interval)
         after = counters()
         data = dict(run_id=args.run_id, node=args.node, metrics=metrics(before, after))
-        request = Request(args.endpoint.rstrip('/') + '/api/telemetry', data=json.dumps(data).encode(), headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'})
-        with urlopen(request, timeout=10) as response:
-            if response.status != 201:
-                raise RuntimeError('collector rejected sample')
+        post(args.endpoint, token, '/api/telemetry', data)
+        for sample in framework_samples(args.framework_metrics_dir, seen):
+            if sample.get('run_id') != args.run_id:
+                raise ValueError('framework metric run_id must match the agent')
+            sample = dict(sample, node=args.node)
+            post(args.endpoint, token, '/api/framework-metrics', sample)
         print(json.dumps(data), flush=True)
         before = after
 

@@ -55,6 +55,7 @@ GitHub Pages가 아래 JSON endpoint를 제공하며 dashboard는 브라우저�
 | `GET /api/runs/<run_id>/interconnect.json` | node↔node 및 GPU↔GPU topology matrix |
 | `GET /api/runs/<run_id>/data-movement.json` | phase-aware storage·host·GPU 전송 경로와 peak memory |
 | `GET /api/runs/<run_id>/storage.json` | device I/O, cache와 checkpoint metric |
+| `GET/POST /api/framework-metrics` | local collector의 TRL·Megatron loss, tokens/s와 rank timer |
 
 현재 run은 `rl-2051`, `pt-1042`, `pt-1041`, `pt-1038`입니다.
 

@@ -14,13 +14,15 @@ ROOT = Path(__file__).resolve().parents[1]
 FIELDS = ('cpu_utilization_percent', 'memory_used_gib', 'memory_total_gib',
           'nic_receive_gbps', 'nic_transmit_gbps', 'interval_seconds',
           'memory_available_gib', 'swap_used_gib', 'swap_total_gib')
+FRAMEWORK_FIELDS = {'training_loss', 'training_step_time_seconds',
+                    'training_tokens_per_second'}
 
 
 def validate(data):
     if not isinstance(data, dict) or set(data) != {'run_id', 'node', 'metrics'}:
         raise ValueError('expected run_id, node, metrics')
     for key in ('run_id', 'node'):
-        if not isinstance(data[key], str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,64}', data[key]):
+        if not isinstance(data[key], str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,64}', data[key]):
             raise ValueError('invalid identifier')
     m = data['metrics']
     if not isinstance(m, dict) or set(m) != set(FIELDS):
@@ -32,9 +34,35 @@ def validate(data):
     return data
 
 
+def validate_framework(data):
+    expected = {'schema_version', 'run_id', 'framework', 'node', 'rank',
+                'local_rank', 'step', 'observed_at', 'metrics', 'timers'}
+    if not isinstance(data, dict) or set(data) != expected or data['schema_version'] != 1:
+        raise ValueError('invalid framework sample fields')
+    for key in ('run_id', 'node'):
+        if not isinstance(data[key], str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,64}', data[key]):
+            raise ValueError('invalid identifier')
+    if data['framework'] not in {'trl', 'megatron'}:
+        raise ValueError('invalid framework')
+    if any(type(data[key]) is not int or data[key] < 0 for key in ('rank', 'local_rank', 'step')):
+        raise ValueError('invalid rank or step')
+    if type(data['observed_at']) not in (int, float) or not math.isfinite(data['observed_at']) or data['observed_at'] < 0:
+        raise ValueError('invalid observation time')
+    metrics, timers = data['metrics'], data['timers']
+    if not isinstance(metrics, dict) or not metrics or set(metrics) - FRAMEWORK_FIELDS:
+        raise ValueError('invalid framework metrics')
+    if not isinstance(timers, dict) or len(timers) > 32 or any(not re.fullmatch(r'[a-z][a-z0-9_-]{0,63}', key) for key in timers):
+        raise ValueError('invalid framework timers')
+    values = [*metrics.values(), *timers.values()]
+    if any(type(value) not in (int, float) or not math.isfinite(value) or value < 0 for value in values):
+        raise ValueError('framework metrics must be finite nonnegative numbers')
+    return data
+
+
 def make_server(address, database, token):
     with sqlite3.connect(database) as db:
         db.execute('CREATE TABLE IF NOT EXISTS samples (id INTEGER PRIMARY KEY, received_at TEXT, run_id TEXT, node TEXT, metrics TEXT)')
+        db.execute('CREATE TABLE IF NOT EXISTS framework_samples (id INTEGER PRIMARY KEY, received_at TEXT, run_id TEXT, framework TEXT, node TEXT, rank INTEGER, sample TEXT)')
 
     class Handler(BaseHTTPRequestHandler):
         def reply(self, status, body, mime='application/json'):
@@ -60,16 +88,21 @@ def make_server(address, database, token):
                 return self.reply(200, (ROOT / self.path[1:]).read_bytes(), theme_assets[self.path])
             if self.path == '/healthz':
                 return self.reply(200, {'status': 'ok'})
-            if self.path != '/api/telemetry':
+            if self.path not in ('/api/telemetry', '/api/framework-metrics'):
                 return self.reply(404, {'error': 'not found'})
             if not self.authorized():
                 return self.reply(401, {'error': 'unauthorized'})
             with sqlite3.connect(database) as db:
-                rows = db.execute('SELECT received_at, run_id, node, metrics FROM samples ORDER BY id DESC LIMIT 1000').fetchall()
-            self.reply(200, {'source': 'linux-procfs', 'synthetic': False, 'samples': [dict(received_at=t, run_id=r, node=n, metrics=json.loads(m)) for t, r, n, m in rows]})
+                if self.path == '/api/telemetry':
+                    rows = db.execute('SELECT received_at, run_id, node, metrics FROM samples ORDER BY id DESC LIMIT 1000').fetchall()
+                    body = {'source': 'linux-procfs', 'synthetic': False, 'samples': [dict(received_at=t, run_id=r, node=n, metrics=json.loads(m)) for t, r, n, m in rows]}
+                else:
+                    rows = db.execute('SELECT received_at, sample FROM framework_samples ORDER BY id DESC LIMIT 1000').fetchall()
+                    body = {'source': 'framework-adapter', 'synthetic': False, 'samples': [dict(json.loads(sample), received_at=stamp) for stamp, sample in rows]}
+            self.reply(200, body)
 
         def do_POST(self):
-            if self.path != '/api/telemetry':
+            if self.path not in ('/api/telemetry', '/api/framework-metrics'):
                 return self.reply(404, {'error': 'not found'})
             if not self.authorized():
                 return self.reply(401, {'error': 'unauthorized'})
@@ -78,13 +111,18 @@ def make_server(address, database, token):
                 if not 0 < size <= 16384:
                     return self.reply(413, {'error': 'body must be 1..16384 bytes'})
                 self.connection.settimeout(10)
-                data = validate(json.loads(self.rfile.read(size)))
+                raw = json.loads(self.rfile.read(size))
+                data = validate(raw) if self.path == '/api/telemetry' else validate_framework(raw)
             except (ValueError, TypeError, OSError):
                 return self.reply(400, {'error': 'invalid sample'})
             stamp = datetime.now(timezone.utc).isoformat()
             with sqlite3.connect(database) as db:
-                db.execute('INSERT INTO samples(received_at, run_id, node, metrics) VALUES (?, ?, ?, ?)', (stamp, data['run_id'], data['node'], json.dumps(data['metrics'])))
-                db.execute('DELETE FROM samples WHERE id <= (SELECT COALESCE(MAX(id),0) - 10000 FROM samples)')
+                if self.path == '/api/telemetry':
+                    db.execute('INSERT INTO samples(received_at, run_id, node, metrics) VALUES (?, ?, ?, ?)', (stamp, data['run_id'], data['node'], json.dumps(data['metrics'])))
+                    db.execute('DELETE FROM samples WHERE id <= (SELECT COALESCE(MAX(id),0) - 10000 FROM samples)')
+                else:
+                    db.execute('INSERT INTO framework_samples(received_at, run_id, framework, node, rank, sample) VALUES (?, ?, ?, ?, ?, ?)', (stamp, data['run_id'], data['framework'], data['node'], data['rank'], json.dumps(data)))
+                    db.execute('DELETE FROM framework_samples WHERE id <= (SELECT COALESCE(MAX(id),0) - 10000 FROM framework_samples)')
             self.reply(201, {'received_at': stamp})
 
     return ThreadingHTTPServer(address, Handler)
