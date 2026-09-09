@@ -9,6 +9,7 @@ import re
 import sqlite3
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from datetime import datetime, timezone
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 FIELDS = ('cpu_utilization_percent', 'memory_used_gib', 'memory_total_gib',
@@ -59,23 +60,52 @@ def validate_framework(data):
     return data
 
 
-def make_server(address, database, token):
+def validate_origin(value):
+    if value is None:
+        return None
+    origin = value.rstrip('/')
+    parsed = urlsplit(origin)
+    if parsed.scheme not in ('http', 'https') or not parsed.netloc or origin != f'{parsed.scheme}://{parsed.netloc}':
+        raise ValueError('CORS origin must be one exact HTTP(S) origin')
+    return origin
+
+
+def make_server(address, database, token, cors_origin=None):
+    cors_origin = validate_origin(cors_origin)
     with sqlite3.connect(database) as db:
         db.execute('CREATE TABLE IF NOT EXISTS samples (id INTEGER PRIMARY KEY, received_at TEXT, run_id TEXT, node TEXT, metrics TEXT)')
         db.execute('CREATE TABLE IF NOT EXISTS framework_samples (id INTEGER PRIMARY KEY, received_at TEXT, run_id TEXT, framework TEXT, node TEXT, rank INTEGER, sample TEXT)')
 
     class Handler(BaseHTTPRequestHandler):
+        def cors_allowed(self):
+            origin = self.headers.get('Origin', '')
+            return cors_origin is not None and hmac.compare_digest(origin, cors_origin)
+
         def reply(self, status, body, mime='application/json'):
             payload = body if isinstance(body, bytes) else json.dumps(body).encode()
             self.send_response(status)
             self.send_header('Content-Type', mime)
             self.send_header('Content-Length', str(len(payload)))
             self.send_header('Cache-Control', 'no-store')
+            if self.cors_allowed():
+                self.send_header('Access-Control-Allow-Origin', cors_origin)
+                self.send_header('Vary', 'Origin')
             self.end_headers()
             self.wfile.write(payload)
 
         def authorized(self):
             return hmac.compare_digest(self.headers.get('Authorization', ''), 'Bearer ' + token)
+
+        def do_OPTIONS(self):
+            if self.path not in ('/api/telemetry', '/api/framework-metrics') or not self.cors_allowed():
+                return self.reply(403, {'error': 'origin not allowed'})
+            self.send_response(204)
+            self.send_header('Access-Control-Allow-Origin', cors_origin)
+            self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+            self.send_header('Access-Control-Allow-Headers', 'Authorization, Content-Type')
+            self.send_header('Access-Control-Max-Age', '600')
+            self.send_header('Vary', 'Origin')
+            self.end_headers()
 
         def do_GET(self):
             if self.path in ('/', '/telemetry.html'):
@@ -133,8 +163,13 @@ if __name__ == '__main__':
     parser.add_argument('--bind', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=8001)
     parser.add_argument('--database', default='telemetry.sqlite3')
+    parser.add_argument('--cors-origin', help='exact browser origin allowed to call the collector')
     args = parser.parse_args()
     token = os.environ.get('OBSERVATORY_TOKEN', '')
     if len(token) < 24 or not token.isascii():
         parser.error('set OBSERVATORY_TOKEN to at least 24 ASCII characters')
-    make_server((args.bind, args.port), args.database, token).serve_forever()
+    try:
+        server = make_server((args.bind, args.port), args.database, token, args.cors_origin)
+    except ValueError as error:
+        parser.error(str(error))
+    server.serve_forever()

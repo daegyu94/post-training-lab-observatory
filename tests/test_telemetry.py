@@ -5,7 +5,7 @@ import threading
 import unittest
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
-from telemetry.server import make_server, validate_framework
+from telemetry.server import make_server, validate_framework, validate_origin
 from telemetry.agent import framework_samples, metrics
 from telemetry.export import export
 
@@ -21,7 +21,8 @@ class TelemetryTest(unittest.TestCase):
     def test_integration(self):
         with tempfile.TemporaryDirectory() as tmp:
             database=str(Path(tmp)/'db')
-            server=make_server(('127.0.0.1',0),database,'x'*32)
+            origin='https://daegyu94.github.io'
+            server=make_server(('127.0.0.1',0),database,'x'*32,origin)
             thread=threading.Thread(target=server.serve_forever);thread.start()
             endpoint='http://127.0.0.1:'+str(server.server_port)+'/api/telemetry'
             sample=dict(run_id='test',node='spark1',metrics=dict(cpu_utilization_percent=25,memory_used_gib=1,memory_total_gib=2,memory_available_gib=1,swap_used_gib=0,swap_total_gib=1,nic_receive_gbps=0,nic_transmit_gbps=0,interval_seconds=2))
@@ -29,6 +30,13 @@ class TelemetryTest(unittest.TestCase):
                 return urlopen(Request(endpoint,data=None if data is None else json.dumps(data).encode(),headers={'Authorization':'Bearer '+token}),timeout=2)
             try:
                 base = endpoint.removesuffix('/api/telemetry')
+                preflight=Request(endpoint,method='OPTIONS',headers={'Origin':origin,'Access-Control-Request-Method':'GET','Access-Control-Request-Headers':'Authorization'})
+                with urlopen(preflight,timeout=2) as r:
+                    self.assertEqual(r.status,204)
+                    self.assertEqual(r.headers['Access-Control-Allow-Origin'],origin)
+                with self.assertRaises(HTTPError) as denied:
+                    urlopen(Request(endpoint,method='OPTIONS',headers={'Origin':'https://example.com'}),timeout=2)
+                self.assertEqual(denied.exception.code,403)
                 for asset, mime in [('theme.js', 'text/javascript'), ('theme.css', 'text/css')]:
                     with urlopen(base + '/assets/' + asset, timeout=2) as r:
                         self.assertEqual(r.status, 200)
@@ -44,6 +52,9 @@ class TelemetryTest(unittest.TestCase):
                 with self.assertRaises(HTTPError) as e: request(sample)
                 self.assertEqual(e.exception.code,400)
                 with request() as r: self.assertEqual(len(json.load(r)['samples']),1)
+                cors_get=Request(endpoint,headers={'Origin':origin,'Authorization':'Bearer '+'x'*32})
+                with urlopen(cors_get,timeout=2) as r:
+                    self.assertEqual(r.headers['Access-Control-Allow-Origin'],origin)
                 framework=dict(schema_version=1,run_id='test',framework='megatron',node='spark1',rank=0,local_rank=0,step=1,observed_at=1.0,metrics={'training_loss':1.25,'training_tokens_per_second':10.0},timers={'forward-backward':0.5})
                 framework_endpoint=base+'/api/framework-metrics'
                 with urlopen(Request(framework_endpoint,data=json.dumps(framework).encode(),headers={'Authorization':'Bearer '+'x'*32}),timeout=2) as r:self.assertEqual(r.status,201)
@@ -60,6 +71,11 @@ class TelemetryTest(unittest.TestCase):
             restarted=make_server(('127.0.0.1',0),database,'x'*32);restarted.server_close()
             export(database,'test',output)
             self.assertEqual(len(json.loads(output.read_text())['samples']),1)
+
+    def test_cors_origin_is_exact(self):
+        self.assertEqual(validate_origin('https://daegyu94.github.io/'),'https://daegyu94.github.io')
+        for value in ['daegyu94.github.io','https://daegyu94.github.io/path','https://example.com\nInjected: value']:
+            with self.assertRaises(ValueError):validate_origin(value)
 
     def test_framework_validation_and_spool_deduplication(self):
         sample=dict(schema_version=1,run_id='test',framework='trl',node='spark1',rank=0,local_rank=0,step=1,observed_at=1.0,metrics={'training_loss':1.0},timers={})

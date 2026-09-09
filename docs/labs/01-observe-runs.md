@@ -62,7 +62,8 @@ mkdir -p artifacts
 umask 077
 python3 -c 'import secrets; print(secrets.token_hex(24))' > artifacts/token
 export OBSERVATORY_TOKEN="$(cat artifacts/token)"
-python3 telemetry/server.py --database artifacts/spark.sqlite3
+python3 telemetry/server.py --database artifacts/spark.sqlite3 \
+  --cors-origin https://daegyu94.github.io
 ```
 
 API는 기본적으로 `127.0.0.1:8001`에 바인딩됩니다.
@@ -105,6 +106,16 @@ Port 18001이 이미 사용 중이면 다른 port로 바꾸고 endpoint도 함�
 Collector의 `http://127.0.0.1:8001/`을 열고 **Local collector**를 선택한 뒤 token을 입력하고 Refresh합니다.
 원격 브라우저에서는 controller로 SSH local forwarding을 연결해 같은 URL을 사용합니다.
 Token은 브라우저 저장소에 보존하지 않습니다.
+
+GitHub Pages의 `telemetry.html`에서 실시간 값을 보려면 브라우저를 실행하는 host에서 controller로 local forwarding을 연결합니다.
+
+```bash
+ssh -N -L 8001:127.0.0.1:8001 '<controller-host>'
+```
+
+Pages 화면에서 **Local collector**를 선택하고 Collector URL `http://127.0.0.1:8001`과 token을 입력합니다.
+Collector의 `--cors-origin`은 Pages의 정확한 origin만 허용하며 token은 Pages나 browser storage에 저장되지 않습니다.
+브라우저가 local-network 접근 권한을 요청하면 이 collector 연결에 한해 허용해야 합니다.
 
 ### 3. Export and Publish the Selected Run
 
