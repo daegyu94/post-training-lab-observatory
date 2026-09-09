@@ -141,203 +141,572 @@ button:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #729
   </main>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="assets/charts.js"></script>
 <script src="assets/demo.js"></script>
 <script src="assets/history.js"></script>
 <script>
 (() => {
-  const state={registry:null,run:null,summary:null,resources:null,interconnect:null,storage:null,dataMovement:null,view:"overview",playing:false,timer:null,tick:0,history:[],requestId:0,baseline:null,samples:[],selectedGpu:null,selectedPath:null,sampledAt:null,archive:null};
-  const $=id=>document.getElementById(id);
-  const format=(value,digits=0)=>Number(value).toLocaleString(undefined,{minimumFractionDigits:digits,maximumFractionDigits:digits});
-  const percent=value=>format(Number(value)*100,0)+"%";
-  async function api(path){const response=await fetch(path,{headers:{Accept:"application/json"}});if(!response.ok)throw new Error(response.status+" "+response.statusText);return response.json()}
-  function toast(message){const el=$("toast");el.textContent=message;el.classList.add("show");clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove("show"),2500)}
-  function setValue(id,value,unit){$(id).innerHTML=value+(unit?' <span>'+unit+'</span>':'')}
-  function runPath(type){return "api/runs/"+state.run.run_id+"/"+type+".json"}
-  function selectView(view){state.view=view;document.body.classList.toggle("history-mode",view==="history");document.querySelector(".top-title h1").textContent=view==="history"?"Run history":"Training run";document.querySelector(".top-title p").textContent=view==="history"?"실행 기록 · 설정 · 타임라인":"리소스 병목과 workload critical path";$("overview-nav-label").textContent=view==="history"?"Demo playground":"Overview";document.querySelectorAll(".side-nav button").forEach(b=>b.classList.toggle("active",b.dataset.view===view));document.querySelectorAll(".panel-view").forEach(p=>p.hidden=p.dataset.panel!==view);history.replaceState(null,"","#"+view);if(view==="history"){stopDemo();window.dispatchEvent(new Event("history-view"))}if(view==="api")refreshApiOptions();if(view==="overview"&&state.summary)renderThroughput();if(view==="storage"&&state.summary)renderStorage()}
-  document.querySelectorAll(".side-nav button").forEach(button=>button.addEventListener("click",()=>{if(state.view==="history"&&button.dataset.view==="overview"&&state.registry){const url=new URL(location.href);url.searchParams.delete("archive");history.replaceState(null,"",url);loadRun(state.registry.runs.some(r=>r.run_id===state.run?.run_id)?state.run.run_id:"pt-1042")}selectView(button.dataset.view)}));
-  async function initialize(){
-    const requested=location.hash.slice(1);selectView(["overview","cluster","movement","storage","workload","api"].includes(requested)?requested:"history");
-    try{
-      state.registry=await api("api/runs.json");const select=$("run-select");select.innerHTML="";
-      state.registry.runs.forEach(run=>{const option=document.createElement("option");option.value=run.run_id;option.textContent=run.run_id+" · "+run.name;select.appendChild(option)});
-      let saved="";try{saved=localStorage.getItem("observatory-run")||""}catch(e){}
-      const initial=state.registry.runs.some(r=>r.run_id===saved)?saved:(state.registry.runs.find(r=>r.run_id==="pt-1042")||state.registry.runs[0]).run_id;
-      select.value=initial;
-      const archiveId=new URL(location.href).searchParams.get("archive");
-      if(archiveId&&requested&&requested!=="history"){
-        const archives=await api("api/history/index.json");
-        if(!archives.runs.some(r=>r.archive_id===archiveId))throw new Error("Unknown archive");
-        const record=await api("api/history/"+encodeURIComponent(archiveId)+".json");
-        if(!record.report.resources){selectView("history");return}
-        window.dispatchEvent(new CustomEvent("history-open-profile",{detail:record}));selectView(requested);return;
+  const state = {
+    registry: null, run: null, summary: null, resources: null, interconnect: null, storage: null, dataMovement: null,
+    view: "overview", playing: false, timer: null, tick: 0, history: [], requestId: 0, baseline: null,
+    samples: [], selectedGpu: null, selectedPath: null, sampledAt: null, archive: null
+  };
+  const $ = id => document.getElementById(id);
+  const format = (value, digits = 0) => Number(value).toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  const percent = value => format(Number(value) * 100, 0) + "%";
+
+  async function api(path) {
+    const response = await fetch(path, { headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error(response.status + " " + response.statusText);
+    return response.json();
+  }
+
+  function toast(message) {
+    const el = $("toast");
+    el.textContent = message;
+    el.classList.add("show");
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => el.classList.remove("show"), 2500);
+  }
+
+  function setValue(id, value, unit) {
+    $(id).innerHTML = value + (unit ? ' <span>' + unit + '</span>' : '');
+  }
+
+  function runPath(type) {
+    return "api/runs/" + state.run.run_id + "/" + type + ".json";
+  }
+
+  function selectView(view) {
+    state.view = view;
+    document.body.classList.toggle("history-mode", view === "history");
+    document.querySelector(".top-title h1").textContent = view === "history" ? "Run history" : "Training run";
+    document.querySelector(".top-title p").textContent = view === "history" ? "실행 기록 · 설정 · 타임라인" : "리소스 병목과 workload critical path";
+    $("overview-nav-label").textContent = view === "history" ? "Demo playground" : "Overview";
+    document.querySelectorAll(".side-nav button").forEach(b => b.classList.toggle("active", b.dataset.view === view));
+    document.querySelectorAll(".panel-view").forEach(p => { p.hidden = p.dataset.panel !== view; });
+    history.replaceState(null, "", "#" + view);
+    if (view === "history") {
+      stopDemo();
+      window.dispatchEvent(new Event("history-view"));
+    }
+    if (view === "api") refreshApiOptions();
+    if (view === "overview" && state.summary) renderThroughput();
+    if (view === "storage" && state.summary) renderStorage();
+  }
+
+  document.querySelectorAll(".side-nav button").forEach(button => button.addEventListener("click", () => {
+    if (state.view === "history" && button.dataset.view === "overview" && state.registry) {
+      const url = new URL(location.href);
+      url.searchParams.delete("archive");
+      history.replaceState(null, "", url);
+      loadRun(state.registry.runs.some(r => r.run_id === state.run?.run_id) ? state.run.run_id : "pt-1042");
+    }
+    selectView(button.dataset.view);
+  }));
+  async function initialize() {
+    const requested = location.hash.slice(1);
+    selectView(["overview", "cluster", "movement", "storage", "workload", "api"].includes(requested) ? requested : "history");
+    try {
+      state.registry = await api("api/runs.json");
+      const select = $("run-select");
+      select.innerHTML = "";
+      state.registry.runs.forEach(run => {
+        const option = document.createElement("option");
+        option.value = run.run_id;
+        option.textContent = run.run_id + " · " + run.name;
+        select.appendChild(option);
+      });
+      let saved = "";
+      try { saved = localStorage.getItem("observatory-run") || ""; } catch (e) {}
+      const initial = state.registry.runs.some(r => r.run_id === saved) ? saved : (state.registry.runs.find(r => r.run_id === "pt-1042") || state.registry.runs[0]).run_id;
+      select.value = initial;
+      const archiveId = new URL(location.href).searchParams.get("archive");
+      if (archiveId && requested && requested !== "history") {
+        const archives = await api("api/history/index.json");
+        if (!archives.runs.some(r => r.archive_id === archiveId)) throw new Error("Unknown archive");
+        const record = await api("api/history/" + encodeURIComponent(archiveId) + ".json");
+        if (!record.report.resources) {
+          selectView("history");
+          return;
+        }
+        window.dispatchEvent(new CustomEvent("history-open-profile", { detail: record }));
+        selectView(requested);
+        return;
       }
       await loadRun(initial);
-    }catch(error){$("api-health").textContent="● API error";$("api-health").style.color="var(--red)";toast("Run registry를 불러오지 못했습니다: "+error.message)}
+    } catch (error) {
+      $("api-health").textContent = "● API error";
+      $("api-health").style.color = "var(--red)";
+      toast("Run registry를 불러오지 못했습니다: " + error.message);
+    }
   }
-  async function loadRun(runId){
+
+  async function loadRun(runId) {
     stopDemo();
-    $("window-select").disabled=false;
-    document.body.classList.remove("archive-mode");state.archive=null;$("data-notice").textContent="이 화면은 합성 profiling 예제입니다. Live demo 수치는 benchmark 결과가 아닙니다.";state.recordedSamples=[];$("data-origin").textContent="SYNTHETIC DATA";state.baseline=null;state.summary=null;state.tick=0;state.samples=[];state.selectedGpu=null;state.selectedPath=null;state.sampledAt=null;
-    $("demo-button").disabled=true;$("export-button").disabled=true;
-    $("stream-status").textContent="Loading snapshot…";
-    const requestId=++state.requestId;
-    state.run=state.registry.runs.find(r=>r.run_id===runId);$("api-health").textContent="● API 요청 중";$("run-name").textContent=state.run.name;$("run-context").textContent=state.run.framework+" · "+state.run.workload+" · "+state.run.nodes+" nodes / "+state.run.gpus+" GPUs";$("run-status").textContent="LOADING";
-    try{
-      const [summary,resources,interconnect,storage,dataMovement]=await Promise.all([api("api/runs/"+runId+"/summary.json"),api("api/runs/"+runId+"/resources.json"),api("api/runs/"+runId+"/interconnect.json"),api("api/runs/"+runId+"/storage.json"),api("api/runs/"+runId+"/data-movement.json")]);
-      if(requestId!==state.requestId)return;
-      Object.assign(state,{summary,resources,interconnect,storage,dataMovement});
-      state.baseline=JSON.parse(JSON.stringify({summary,resources,interconnect,storage,dataMovement}));
-      seedSamples();$("demo-button").disabled=false;$("export-button").disabled=false;
-      $("stream-status").textContent="Snapshot · 데모 대기";
-      $("stream-detail").textContent="Live demo로 리소스와 workload 변화를 재생하세요 · 합성 데이터";try{localStorage.setItem("observatory-run",runId)}catch(e){}
-      renderAll();$("api-health").textContent="● Mock API connected";$("api-health").style.color="";$("run-status").textContent=state.run.status.toUpperCase();$("run-updated").textContent="Fixture "+state.run.updated_at.replace("T"," ").slice(0,16)+" UTC";refreshApiOptions();if(state.view!=="history")toast(runId+" resource snapshot을 불러왔습니다.");
-    }catch(error){if(requestId!==state.requestId)return;$("stream-status").textContent="Snapshot load failed";$("api-health").textContent="● API error";$("api-health").style.color="var(--red)";$("run-status").textContent="ERROR";toast("Run data 요청 실패: "+error.message)}
+    $("window-select").disabled = false;
+    document.body.classList.remove("archive-mode");
+    state.archive = null;
+    $("data-notice").textContent = "이 화면은 합성 profiling 예제입니다. Live demo 수치는 benchmark 결과가 아닙니다.";
+    state.recordedSamples = [];
+    $("data-origin").textContent = "SYNTHETIC DATA";
+    state.baseline = null;
+    state.summary = null;
+    state.tick = 0;
+    state.samples = [];
+    state.selectedGpu = null;
+    state.selectedPath = null;
+    state.sampledAt = null;
+    $("demo-button").disabled = true;
+    $("export-button").disabled = true;
+    $("stream-status").textContent = "Loading snapshot…";
+    const requestId = ++state.requestId;
+    state.run = state.registry.runs.find(r => r.run_id === runId);
+    $("api-health").textContent = "● API 요청 중";
+    $("run-name").textContent = state.run.name;
+    $("run-context").textContent = state.run.framework + " · " + state.run.workload + " · " + state.run.nodes + " nodes / " + state.run.gpus + " GPUs";
+    $("run-status").textContent = "LOADING";
+    try {
+      const [summary, resources, interconnect, storage, dataMovement] = await Promise.all([
+        api("api/runs/" + runId + "/summary.json"),
+        api("api/runs/" + runId + "/resources.json"),
+        api("api/runs/" + runId + "/interconnect.json"),
+        api("api/runs/" + runId + "/storage.json"),
+        api("api/runs/" + runId + "/data-movement.json")
+      ]);
+      if (requestId !== state.requestId) return;
+      Object.assign(state, { summary, resources, interconnect, storage, dataMovement });
+      state.baseline = JSON.parse(JSON.stringify({ summary, resources, interconnect, storage, dataMovement }));
+      seedSamples();
+      $("demo-button").disabled = false;
+      $("export-button").disabled = false;
+      $("stream-status").textContent = "Snapshot · 데모 대기";
+      $("stream-detail").textContent = "Live demo로 리소스와 workload 변화를 재생하세요 · 합성 데이터";
+      try { localStorage.setItem("observatory-run", runId); } catch (e) {}
+      renderAll();
+      $("api-health").textContent = "● Mock API connected";
+      $("api-health").style.color = "";
+      $("run-status").textContent = state.run.status.toUpperCase();
+      $("run-updated").textContent = "Fixture " + state.run.updated_at.replace("T", " ").slice(0, 16) + " UTC";
+      refreshApiOptions();
+      if (state.view !== "history") toast(runId + " resource snapshot을 불러왔습니다.");
+    } catch (error) {
+      if (requestId !== state.requestId) return;
+      $("stream-status").textContent = "Snapshot load failed";
+      $("api-health").textContent = "● API error";
+      $("api-health").style.color = "var(--red)";
+      $("run-status").textContent = "ERROR";
+      toast("Run data 요청 실패: " + error.message);
+    }
   }
-  function renderAll(){renderOverview();renderResources();renderMatrix();renderMovement();renderStorage();renderWorkload()}
-  function renderOverview(){
-    const m=state.summary.metrics,d=state.summary.diagnostic;
-    setValue("kpi-throughput",format(m.training_tokens_per_second),"tokens/s");setValue("kpi-step",format(m.training_step_time_seconds_p95,1),"s");setValue("kpi-gpu",format(m.gpu_utilization_percent,1),"%");setValue("kpi-checkpoint",format(m.checkpoint_save_time_seconds),"s");
-    setValue("resource-cpu",format(m.host_cpu_utilization_percent),"%");setValue("resource-memory",format(m.host_memory_used_gib),"GiB");setValue("resource-gpu-memory",format(m.gpu_memory_used_gib),"GiB");setValue("resource-network",format(m.network_transmit_gbps),"Gbps");setValue("resource-storage",format(m.storage_latency_ms_p95,1),"ms");
-    $("diagnostic-title").textContent=d.title;$("diagnostic-message").textContent=d.message;$("diagnostic-collective").textContent=format(d.collective_seconds,1)+" s";$("diagnostic-reference").textContent=format(d.reference_seconds,1)+" s";$("diagnostic-scope").textContent=state.run.run_id==="pt-1042"?"node-02 · rank 16–23":state.run.run_id==="rl-2051"?"rollout replicas":"highest p95 rank";
-    const phases=[["data",m.training_data_wait_seconds_p95],["compute",m.training_compute_seconds_p95],["communication",m.training_communication_seconds_p95]],max=Math.max(...phases.map(x=>x[1]));
-    phases.forEach(([key,value])=>{$("phase-"+key).style.width=Math.min(100,value/max*100)+"%";$("phase-"+key+"-value").textContent=format(value,1)+" s"});
+  function renderAll() {
+    renderOverview();
+    renderResources();
+    renderMatrix();
+    renderMovement();
+    renderStorage();
+    renderWorkload();
+  }
+
+  function renderOverview() {
+    const m = state.summary.metrics, d = state.summary.diagnostic;
+    setValue("kpi-throughput", format(m.training_tokens_per_second), "tokens/s");
+    setValue("kpi-step", format(m.training_step_time_seconds_p95, 1), "s");
+    setValue("kpi-gpu", format(m.gpu_utilization_percent, 1), "%");
+    setValue("kpi-checkpoint", format(m.checkpoint_save_time_seconds), "s");
+    setValue("resource-cpu", format(m.host_cpu_utilization_percent), "%");
+    setValue("resource-memory", format(m.host_memory_used_gib), "GiB");
+    setValue("resource-gpu-memory", format(m.gpu_memory_used_gib), "GiB");
+    setValue("resource-network", format(m.network_transmit_gbps), "Gbps");
+    setValue("resource-storage", format(m.storage_latency_ms_p95, 1), "ms");
+    $("diagnostic-title").textContent = d.title;
+    $("diagnostic-message").textContent = d.message;
+    $("diagnostic-collective").textContent = format(d.collective_seconds, 1) + " s";
+    $("diagnostic-reference").textContent = format(d.reference_seconds, 1) + " s";
+    $("diagnostic-scope").textContent = state.run.run_id === "pt-1042" ? "node-02 · rank 16–23" : state.run.run_id === "rl-2051" ? "rollout replicas" : "highest p95 rank";
+    const phases = [
+      ["data", m.training_data_wait_seconds_p95],
+      ["compute", m.training_compute_seconds_p95],
+      ["communication", m.training_communication_seconds_p95]
+    ];
+    const max = Math.max(...phases.map(x => x[1]));
+    phases.forEach(([key, value]) => {
+      $("phase-" + key).style.width = Math.min(100, value / max * 100) + "%";
+      $("phase-" + key + "-value").textContent = format(value, 1) + " s";
+    });
     renderThroughput();
   }
-  function seedSamples(){
-    if(state.archive){state.samples=(state.archive.history.samples||[]).map(s=>s.metrics.training_tokens_per_second).filter(Number.isFinite);return}
-    const base=state.summary.metrics.training_tokens_per_second;
-    state.samples=Array.from({length:180},(_,i)=>base*(1+Math.sin(i/4)*.025));
-    state.samples[state.samples.length-1]=base;
+
+  function seedSamples() {
+    if (state.archive) {
+      state.samples = (state.archive.history.samples || []).map(s => s.metrics.training_tokens_per_second).filter(Number.isFinite);
+      return;
+    }
+    const base = state.summary.metrics.training_tokens_per_second;
+    state.samples = Array.from({ length: 180 }, (_, i) => base * (1 + Math.sin(i / 4) * .025));
+    state.samples[state.samples.length - 1] = base;
   }
-  function renderThroughput(){
-    if(state.archive&&!state.samples.length){$("chart-series").setAttribute("d","");$("chart-baseline").setAttribute("d","");$("chart-time").textContent="No saved throughput series";return}
-    const values=(state.archive?state.samples:state.samples.slice(-Number($("window-select").value))).map(v=>v/1000);
-    $("chart-time").innerHTML=state.archive?"<span>Saved samples · "+values.length+" points</span><span>Last recorded sample</span>":"<span>−"+$("window-select").value+" min</span><span>Latest sample</span>";
-    const base=state.baseline.summary.metrics.training_tokens_per_second/1000;
-    const reference=state.archive?values:values.map((_,i)=>Math.max(base+7,93)+Math.sin(i/2.8)*1.3);
-    const min=Math.floor((Math.min(...values,...reference)-3)/5)*5,max=Math.ceil((Math.max(...values,...reference)+3)/5)*5;
-    document.querySelectorAll(".chart .axis text").forEach((el,i)=>el.textContent=format(min+(max-min)*i/4,0)+"k");
-    const svg=$("chart-series").ownerSVGElement,width=Math.max(300,svg.clientWidth||820);
-    svg.setAttribute("viewBox","0 0 "+width+" 230");
-    svg.querySelectorAll("g:first-child path").forEach((path,i)=>path.setAttribute("d","M40 "+(195-i*45)+"H"+(width-15)));
-    const line=data=>data.map((v,i)=>(i?"L":"M")+(40+i*(width-55)/Math.max(1,data.length-1)).toFixed(1)+" "+(195-(v-min)/(max-min)*180).toFixed(1)).join(" ");
-    $("chart-series").setAttribute("d",line(values));$("chart-baseline").setAttribute("d",state.archive?"":line(reference));
+
+  function renderThroughput() {
+    if (state.archive && !state.samples.length) {
+      $("chart-series").setAttribute("d", "");
+      $("chart-baseline").setAttribute("d", "");
+      $("chart-time").textContent = "No saved throughput series";
+      return;
+    }
+    const values = (state.archive ? state.samples : state.samples.slice(-Number($("window-select").value))).map(v => v / 1000);
+    $("chart-time").innerHTML = state.archive
+      ? "<span>Saved samples · " + values.length + " points</span><span>Last recorded sample</span>"
+      : "<span>−" + $("window-select").value + " min</span><span>Latest sample</span>";
+    const base = state.baseline.summary.metrics.training_tokens_per_second / 1000;
+    const reference = state.archive ? values : values.map((_, i) => Math.max(base + 7, 93) + Math.sin(i / 2.8) * 1.3);
+    const min = Math.floor((Math.min(...values, ...reference) - 3) / 5) * 5;
+    const max = Math.ceil((Math.max(...values, ...reference) + 3) / 5) * 5;
+    document.querySelectorAll(".chart .axis text").forEach((el, i) => { el.textContent = format(min + (max - min) * i / 4, 0) + "k"; });
+    const svg = $("chart-series").ownerSVGElement;
+    const width = Math.max(300, svg.clientWidth || 820);
+    svg.setAttribute("viewBox", "0 0 " + width + " 230");
+    const grid = Charts.gridLines(5, { x0: 40, x1: width - 15, y0: 195, y1: 15 });
+    svg.querySelectorAll("g:first-child path").forEach((path, i) => path.setAttribute("d", grid[i]));
+    const toPath = data => Charts.pathFromPoints(data.map((v, i) => [
+      Charts.scaleLinear(i, [0, Math.max(1, data.length - 1)], [40, width - 15]),
+      Charts.scaleLinear(v, [min, max], [195, 15])
+    ]));
+    $("chart-series").setAttribute("d", toPath(values));
+    $("chart-baseline").setAttribute("d", state.archive ? "" : toPath(reference));
   }
-  function renderResources(){
-    const focus=document.activeElement?.dataset;
-    const body=$("node-health-body");body.innerHTML=state.resources.nodes.map(node=>{const avg=node.gpus.reduce((sum,g)=>sum+g.utilization_percent,0)/node.gpus.length,alert=node.memory_pressure_ratio>.15||avg<65;return '<tr class="'+(alert?"alert":"")+'"><td>'+node.node+'</td><td class="num">'+node.cpu_utilization_percent+'%</td><td class="num">'+node.memory_used_gib+' / '+node.memory_total_gib+' GiB</td><td class="num">'+format(node.nic_transmit_gbps,1)+' Gbps</td><td class="num">'+format(avg,0)+'%</td></tr>'}).join("");
-    const host=$("gpu-allocation");host.innerHTML=state.resources.nodes.map(node=>'<div class="node-block"><div class="node-label"><span>'+node.node+'</span><span>CPU '+node.cpu_utilization_percent+'% · NIC '+format(node.nic_transmit_gbps,1)+' Gbps</span></div><div class="gpu-grid">'+node.gpus.map(g=>'<button class="gpu '+(g.utilization_percent<65?"hot ":"")+(g.errors_total?"error":"")+'" data-node="'+node.node+'" data-gpu="'+g.index+'">GPU '+g.index+'<b>'+g.utilization_percent+'%</b></button>').join("")+'</div></div>').join("");
-    host.querySelectorAll(".gpu").forEach(button=>button.addEventListener("click",()=>selectGpu(button)));
-    if(state.selectedGpu){const tile=Array.from(host.querySelectorAll('.gpu')).find(b=>b.dataset.node===state.selectedGpu.node&&b.dataset.gpu===state.selectedGpu.gpu);if(tile){selectGpu(tile);if(focus?.node===tile.dataset.node&&focus?.gpu===tile.dataset.gpu)tile.focus({preventScroll:true});return}}
-    $("gpu-inspector").innerHTML='<h3>GPU inspector</h3><p class="empty">GPU tile을 선택하세요. utilization, memory, power, temperature, clock과 error counter를 표시합니다.</p>';
+  function renderResources() {
+    const focus = document.activeElement?.dataset;
+    const body = $("node-health-body");
+    body.innerHTML = state.resources.nodes.map(node => {
+      const avg = node.gpus.reduce((sum, g) => sum + g.utilization_percent, 0) / node.gpus.length;
+      const alert = node.memory_pressure_ratio > .15 || avg < 65;
+      return `<tr class="${alert ? "alert" : ""}"><td>${node.node}</td><td class="num">${node.cpu_utilization_percent}%</td><td class="num">${node.memory_used_gib} / ${node.memory_total_gib} GiB</td><td class="num">${format(node.nic_transmit_gbps, 1)} Gbps</td><td class="num">${format(avg, 0)}%</td></tr>`;
+    }).join("");
+    const host = $("gpu-allocation");
+    host.innerHTML = state.resources.nodes.map(node => `<div class="node-block"><div class="node-label"><span>${node.node}</span><span>CPU ${node.cpu_utilization_percent}% · NIC ${format(node.nic_transmit_gbps, 1)} Gbps</span></div><div class="gpu-grid">${node.gpus.map(g => `<button class="gpu ${g.utilization_percent < 65 ? "hot " : ""}${g.errors_total ? "error" : ""}" data-node="${node.node}" data-gpu="${g.index}">GPU ${g.index}<b>${g.utilization_percent}%</b></button>`).join("")}</div></div>`).join("");
+    host.querySelectorAll(".gpu").forEach(button => button.addEventListener("click", () => selectGpu(button)));
+    if (state.selectedGpu) {
+      const tile = Array.from(host.querySelectorAll(".gpu")).find(b => b.dataset.node === state.selectedGpu.node && b.dataset.gpu === state.selectedGpu.gpu);
+      if (tile) {
+        selectGpu(tile);
+        if (focus?.node === tile.dataset.node && focus?.gpu === tile.dataset.gpu) tile.focus({ preventScroll: true });
+        return;
+      }
+    }
+    $("gpu-inspector").innerHTML = '<h3>GPU inspector</h3><p class="empty">GPU tile을 선택하세요. utilization, memory, power, temperature, clock과 error counter를 표시합니다.</p>';
   }
-  function selectGpu(button){
-    state.selectedGpu={node:button.dataset.node,gpu:button.dataset.gpu};
-    document.querySelectorAll(".gpu").forEach(g=>g.classList.remove("selected"));button.classList.add("selected");
-    const node=state.resources.nodes.find(n=>n.node===button.dataset.node),gpu=node.gpus.find(g=>g.index===Number(button.dataset.gpu));
-    $("gpu-inspector").innerHTML='<h3>'+node.node+' / GPU '+gpu.index+'</h3><dl><dt>Global rank</dt><dd>'+gpu.global_rank+'</dd><dt>Utilization</dt><dd>'+gpu.utilization_percent+'%</dd><dt>Memory</dt><dd>'+gpu.memory_used_gib+' GiB</dd><dt>Power</dt><dd>'+gpu.power_watts+' W</dd><dt>Temperature</dt><dd>'+gpu.temperature_celsius+' °C</dd><dt>Clock</dt><dd>'+gpu.clock_mhz+' MHz</dd><dt>Errors</dt><dd>'+gpu.errors_total+'</dd></dl>';
+
+  function selectGpu(button) {
+    state.selectedGpu = { node: button.dataset.node, gpu: button.dataset.gpu };
+    document.querySelectorAll(".gpu").forEach(g => g.classList.remove("selected"));
+    button.classList.add("selected");
+    const node = state.resources.nodes.find(n => n.node === button.dataset.node);
+    const gpu = node.gpus.find(g => g.index === Number(button.dataset.gpu));
+    $("gpu-inspector").innerHTML = `<h3>${node.node} / GPU ${gpu.index}</h3><dl><dt>Global rank</dt><dd>${gpu.global_rank}</dd><dt>Utilization</dt><dd>${gpu.utilization_percent}%</dd><dt>Memory</dt><dd>${gpu.memory_used_gib} GiB</dd><dt>Power</dt><dd>${gpu.power_watts} W</dd><dt>Temperature</dt><dd>${gpu.temperature_celsius} °C</dd><dt>Clock</dt><dd>${gpu.clock_mhz} MHz</dd><dt>Errors</dt><dd>${gpu.errors_total}</dd></dl>`;
   }
-  function matrixColor(value,max,hot){if(!value)return"var(--surface-2)";const ratio=Math.min(1,value/max),hue=hot?44-ratio*13:218-ratio*18;return"hsl("+hue+" "+(38+ratio*35)+"% "+(document.documentElement.dataset.theme==="dark"?16+ratio*13:96-ratio*38)+"%)"}
-  function renderMatrix(){
-    if(!state.interconnect)return;const scope=$("matrix-scope").value,metric=$("matrix-metric").value,block=state.interconnect[scope],values=block[metric],max=Math.max(...values.flat().filter(Boolean)),unit=metric==="utilization_percent"?"%":metric==="throughput_gbps"?" Gbps":" µs",hot=metric!=="throughput_gbps";
-    let html='<table class="matrix"><thead><tr><th></th>'+block.labels.map(l=>"<th>"+l+"</th>").join("")+"</tr></thead><tbody>";
-    values.forEach((row,i)=>{html+="<tr><th>"+block.labels[i]+"</th>";row.forEach((value,j)=>{const diagonal=i===j;html+='<td class="'+(diagonal?"diagonal":"")+'" style="background:'+matrixColor(value,max,hot)+'" title="'+block.labels[i]+" → "+block.labels[j]+'">'+(diagonal?"—":format(value,metric==="latency_us"?1:0)+unit)+"</td>"});html+="</tr>"});$("matrix-host").innerHTML=html+"</tbody></table>";$("matrix-status").textContent=block.labels.length+"×"+block.labels.length+" · "+state.interconnect.links.join(" · ");
+  function matrixColor(value, max, hot) {
+    if (!value) return "var(--surface-2)";
+    const ratio = Math.min(1, value / max);
+    const hue = hot ? 44 - ratio * 13 : 218 - ratio * 18;
+    const lightness = document.documentElement.dataset.theme === "dark" ? 16 + ratio * 13 : 96 - ratio * 38;
+    return "hsl(" + hue + " " + (38 + ratio * 35) + "% " + lightness + "%)";
   }
-  function renderMovement(){
-    if(!state.dataMovement)return;
-    const focusedPath=document.activeElement?.dataset.path;
-    const GiB=1073741824,paths=state.dataMovement.paths;
-    $("path-flow").innerHTML=paths.map((path,index)=>'<button class="path-node '+(index===0?"selected":"")+'" data-path="'+path.id+'"><small>'+path.technology+'</small><b>'+path.label+'</b><span>'+format(path.data_movement_effective_bandwidth_bytes_per_second/GiB,1)+' GiB/s · '+percent(path.baseline_utilization_ratio)+'</span></button>').join("");
-    $("path-flow").querySelectorAll(".path-node").forEach(button=>button.addEventListener("click",()=>selectPath(button.dataset.path,button)));
-    const peak=state.dataMovement.peak_memory;
-    setValue("peak-gpu",format(peak.gpu_memory_peak_bytes/GiB,1),"GiB");setValue("peak-host",format(peak.host_memory_peak_bytes/GiB,1),"GiB");setValue("peak-pinned",format(peak.host_pinned_memory_used_bytes/GiB,1),"GiB");
-    $("movement-phase-body").innerHTML=state.dataMovement.phases.map(phase=>'<tr><td><code>'+phase.phase+'</code></td><td>'+phase.path_ids.join(" · ")+'</td><td class="num">'+format(phase.data_movement_bytes_total/GiB,1)+' GiB</td><td class="num">'+format(phase.data_movement_duration_seconds,1)+' s</td><td>'+phase.bottleneck+'</td></tr>').join("");
-    $("movement-source").textContent="GET /api/runs/"+state.run.run_id+"/data-movement.json";
-    const selected=state.selectedPath||paths[0].id,button=Array.from($("path-flow").querySelectorAll(".path-node")).find(b=>b.dataset.path===selected);
-    selectPath(selected,button);if(focusedPath===selected)button.focus({preventScroll:true});
+
+  function renderMatrix() {
+    if (!state.interconnect) return;
+    const scope = $("matrix-scope").value, metric = $("matrix-metric").value;
+    const block = state.interconnect[scope], values = block[metric];
+    const max = Math.max(...values.flat().filter(Boolean));
+    const unit = metric === "utilization_percent" ? "%" : metric === "throughput_gbps" ? " Gbps" : " µs";
+    const hot = metric !== "throughput_gbps";
+    let html = '<table class="matrix"><thead><tr><th></th>' + block.labels.map(l => "<th>" + l + "</th>").join("") + "</tr></thead><tbody>";
+    values.forEach((row, i) => {
+      html += "<tr><th>" + block.labels[i] + "</th>";
+      row.forEach((value, j) => {
+        const diagonal = i === j;
+        html += '<td class="' + (diagonal ? "diagonal" : "") + '" style="background:' + matrixColor(value, max, hot) + '" title="' + block.labels[i] + " → " + block.labels[j] + '">' + (diagonal ? "—" : format(value, metric === "latency_us" ? 1 : 0) + unit) + "</td>";
+      });
+      html += "</tr>";
+    });
+    $("matrix-host").innerHTML = html + "</tbody></table>";
+    $("matrix-status").textContent = block.labels.length + "×" + block.labels.length + " · " + state.interconnect.links.join(" · ");
   }
-  function selectPath(pathId,button){
-    state.selectedPath=pathId;
-    const GiB=1073741824,path=state.dataMovement.paths.find(item=>item.id===pathId);
-    document.querySelectorAll(".path-node").forEach(node=>node.classList.remove("selected"));if(button)button.classList.add("selected");
-    $("path-inspector").innerHTML='<h3>'+path.label+'</h3><dl><dt>Technology</dt><dd>'+path.technology+'</dd><dt>Transferred</dt><dd>'+format(path.data_movement_bytes_total/GiB,1)+' GiB</dd><dt>Duration</dt><dd>'+format(path.data_movement_duration_seconds,1)+' s</dd><dt>Effective</dt><dd>'+format(path.data_movement_effective_bandwidth_bytes_per_second/GiB,1)+' GiB/s</dd><dt>Baseline</dt><dd>'+format(path.baseline_bandwidth_bytes_per_second/GiB,1)+' GiB/s</dd><dt>Utilization</dt><dd><span class="util-bar"><i style="width:'+Math.min(100,path.baseline_utilization_ratio*100)+'%"></i></span>'+percent(path.baseline_utilization_ratio)+'</dd></dl>';
+  function renderMovement() {
+    if (!state.dataMovement) return;
+    const focusedPath = document.activeElement?.dataset.path;
+    const GiB = 1073741824, paths = state.dataMovement.paths;
+    $("path-flow").innerHTML = paths.map((path, index) => `<button class="path-node ${index === 0 ? "selected" : ""}" data-path="${path.id}"><small>${path.technology}</small><b>${path.label}</b><span>${format(path.data_movement_effective_bandwidth_bytes_per_second / GiB, 1)} GiB/s · ${percent(path.baseline_utilization_ratio)}</span></button>`).join("");
+    $("path-flow").querySelectorAll(".path-node").forEach(button => button.addEventListener("click", () => selectPath(button.dataset.path, button)));
+    const peak = state.dataMovement.peak_memory;
+    setValue("peak-gpu", format(peak.gpu_memory_peak_bytes / GiB, 1), "GiB");
+    setValue("peak-host", format(peak.host_memory_peak_bytes / GiB, 1), "GiB");
+    setValue("peak-pinned", format(peak.host_pinned_memory_used_bytes / GiB, 1), "GiB");
+    $("movement-phase-body").innerHTML = state.dataMovement.phases.map(phase => `<tr><td><code>${phase.phase}</code></td><td>${phase.path_ids.join(" · ")}</td><td class="num">${format(phase.data_movement_bytes_total / GiB, 1)} GiB</td><td class="num">${format(phase.data_movement_duration_seconds, 1)} s</td><td>${phase.bottleneck}</td></tr>`).join("");
+    $("movement-source").textContent = "GET /api/runs/" + state.run.run_id + "/data-movement.json";
+    const selected = state.selectedPath || paths[0].id;
+    const button = Array.from($("path-flow").querySelectorAll(".path-node")).find(b => b.dataset.path === selected);
+    selectPath(selected, button);
+    if (focusedPath === selected) button.focus({ preventScroll: true });
   }
-  function renderStorage(){
-    $("storage-body").innerHTML=state.storage.devices.map(d=>'<tr class="'+(d.utilization_percent>=85||d.latency_ms_p95>=6?"alert":"")+'"><td>'+d.node+'</td><td>'+d.device+'</td><td>'+d.mount+'</td><td class="num">'+format(d.read_gbps,2)+' GB/s</td><td class="num">'+format(d.write_gbps,2)+' GB/s</td><td class="num">'+format(d.iops)+'k</td><td class="num">'+format(d.latency_ms_p95,1)+' ms</td><td class="num">'+d.queue_depth+'</td><td class="num">'+d.utilization_percent+'%</td></tr>').join("");
-    const c=state.storage.checkpoint;$("checkpoint-size").textContent=c.size_gib+" GiB";$("checkpoint-save").textContent=c.save_seconds+" s";$("checkpoint-load").textContent=c.load_seconds+" s";$("checkpoint-throughput").textContent=c.throughput_gbps+" GB/s";$("checkpoint-frequency").textContent=format(state.summary.metrics.checkpoint_frequency_steps)+" steps";$("checkpoint-location").textContent=c.location;
-    const svg=$("storage-read-path").ownerSVGElement,width=Math.max(300,svg.clientWidth||820);
-    svg.setAttribute("viewBox","0 0 "+width+" 190");
-    svg.querySelectorAll("g:first-child path").forEach((path,i)=>path.setAttribute("d","M35 "+(160-i*45)+"H"+(width-15)));
-    const line=(data,key,max)=>data.map((p,i)=>(i?"L":"M")+(35+(p.minute-data[0].minute)*(width-50)/(data[data.length-1].minute-data[0].minute)).toFixed(0)+" "+(165-p[key]/max*125).toFixed(0)).join(" "),series=state.storage.series,max=Math.max(...series.map(p=>Math.max(p.read_gbps,p.write_gbps)));
-    const timeLabels=$("storage-read-path").ownerSVGElement.querySelectorAll(".axis text");timeLabels[1].setAttribute("x",width-15);timeLabels[1].setAttribute("text-anchor","end");timeLabels[2].setAttribute("x",width-155);timeLabels[3].setAttribute("x",width-85);timeLabels[0].textContent=series[0].minute+"m";timeLabels[1].textContent=series[series.length-1].minute+"m";
-    $("storage-read-path").setAttribute("d",line(series,"read_gbps",max));$("storage-write-path").setAttribute("d",line(series,"write_gbps",max));
+
+  function selectPath(pathId, button) {
+    state.selectedPath = pathId;
+    const GiB = 1073741824;
+    const path = state.dataMovement.paths.find(item => item.id === pathId);
+    document.querySelectorAll(".path-node").forEach(node => node.classList.remove("selected"));
+    if (button) button.classList.add("selected");
+    $("path-inspector").innerHTML = `<h3>${path.label}</h3><dl><dt>Technology</dt><dd>${path.technology}</dd><dt>Transferred</dt><dd>${format(path.data_movement_bytes_total / GiB, 1)} GiB</dd><dt>Duration</dt><dd>${format(path.data_movement_duration_seconds, 1)} s</dd><dt>Effective</dt><dd>${format(path.data_movement_effective_bandwidth_bytes_per_second / GiB, 1)} GiB/s</dd><dt>Baseline</dt><dd>${format(path.baseline_bandwidth_bytes_per_second / GiB, 1)} GiB/s</dd><dt>Utilization</dt><dd><span class="util-bar"><i style="width:${Math.min(100, path.baseline_utilization_ratio * 100)}%"></i></span>${percent(path.baseline_utilization_ratio)}</dd></dl>`;
   }
-  function metricCard(label,value,source){return'<article class="metric-card"><small>'+label+'</small><b>'+value+'</b><p>'+source+'</p></article>'}
-  function renderWorkload(){
-    const m=state.summary.metrics,agentic=state.summary.workload==="Agentic RL";$("workload-title").textContent=agentic?"Agentic RL critical path":"Training efficiency";$("workload-description").textContent=agentic?"rollout · agent · orchestration backpressure":"quality · efficiency · distributed balance";$("workload-source").textContent=agentic?"VERL · RAY · OTEL":"FRAMEWORK ADAPTER";
-    const cards=agentic?[
-      ["Rollout queue",format(m.rollout_requests_queued)+" req","verl / inference engine"],["Queue age P95",format(m.rollout_queue_age_seconds_p95,1)+" s","verl adapter"],["Rollout throughput",format(m.rollout_output_tokens_per_second)+" tok/s","inference engine"],["TTFT P95",format(m.rollout_time_to_first_token_seconds_p95,2)+" s","inference engine"],["KV cache",percent(m.rollout_kv_cache_utilization_ratio),"inference engine"],["Preemptions",format(m.rollout_preemptions_total),"inference engine"],["Agent turns P95",format(m.agent_turns_p95),"verl agent adapter"],["Tool call P95",format(m.agent_tool_call_duration_seconds_p95,1)+" s","OpenTelemetry"],["Tool errors / timeout",format(m.agent_tool_call_errors_total)+" / "+format(m.agent_tool_call_timeouts_total),"OpenTelemetry"],["Environment wait",percent(m.agent_environment_wait_ratio),"OpenTelemetry summary"],["Pending tasks",format(m.orchestration_tasks_pending),"Ray metrics"],["Scheduling P95",format(m.orchestration_scheduling_delay_seconds_p95,2)+" s","Ray metrics"],["Actor restarts",format(m.orchestration_actor_restarts_total),"Ray metrics"],["Object store",format(m.orchestration_object_store_used_gib)+" GiB","Ray metrics"],["Object spill",format(m.orchestration_object_spill_gib_total)+" GiB","Ray object store"]
-    ]:[
-      ["Samples / second",format(m.training_samples_per_second,1),"framework adapter"],["Training loss",format(m.training_loss,3),"framework adapter"],["Model FLOPs util",percent(m.training_model_flops_utilization_ratio),"model manifest + adapter"],["Dataset load",format(m.training_dataset_load_time_seconds,1)+" s","phase marker"],["Model load",format(m.training_model_load_time_seconds,1)+" s","phase marker"],["Comm overlap",percent(m.training_communication_overlap_ratio),"selected trace"],["Pipeline bubble",percent(m.training_pipeline_bubble_ratio),"framework / trace"],["Rank straggler",percent(m.training_rank_straggler_ratio),"Megatron summary"],["GPU imbalance",percent(m.gpu_utilization_imbalance_ratio),"DCGM summary"],["Communication volume",format(m.network_communication_bytes_total/1099511627776,1)+" TiB","framework / trace"],["Synchronization wait",format(m.network_synchronization_wait_seconds,1)+" s","framework timer"],["NCCL baseline util",percent(m.collective_baseline_utilization_ratio),"NCCL Tests comparison"],["GPU temperature",format(m.gpu_temperature_celsius)+" °C","DCGM Exporter"],["GPU clock",format(m.gpu_clock_mhz)+" MHz","DCGM Exporter"],["Memory pressure",percent(m.host_memory_pressure_ratio),"Node Exporter"],["Storage cache hit",percent(m.storage_cache_hit_ratio),"storage client"],["Network errors",format(m.network_errors_total),"Node Exporter"]
-    ];$("workload-grid").innerHTML=cards.map(c=>metricCard(...c)).join("");
+  function renderStorage() {
+    $("storage-body").innerHTML = state.storage.devices.map(d => `<tr class="${d.utilization_percent >= 85 || d.latency_ms_p95 >= 6 ? "alert" : ""}"><td>${d.node}</td><td>${d.device}</td><td>${d.mount}</td><td class="num">${format(d.read_gbps, 2)} GB/s</td><td class="num">${format(d.write_gbps, 2)} GB/s</td><td class="num">${format(d.iops)}k</td><td class="num">${format(d.latency_ms_p95, 1)} ms</td><td class="num">${d.queue_depth}</td><td class="num">${d.utilization_percent}%</td></tr>`).join("");
+    const c = state.storage.checkpoint;
+    $("checkpoint-size").textContent = c.size_gib + " GiB";
+    $("checkpoint-save").textContent = c.save_seconds + " s";
+    $("checkpoint-load").textContent = c.load_seconds + " s";
+    $("checkpoint-throughput").textContent = c.throughput_gbps + " GB/s";
+    $("checkpoint-frequency").textContent = format(state.summary.metrics.checkpoint_frequency_steps) + " steps";
+    $("checkpoint-location").textContent = c.location;
+    const svg = $("storage-read-path").ownerSVGElement;
+    const width = Math.max(300, svg.clientWidth || 820);
+    svg.setAttribute("viewBox", "0 0 " + width + " 190");
+    const grid = Charts.gridLines(4, { x0: 35, x1: width - 15, y0: 160, y1: 25 });
+    svg.querySelectorAll("g:first-child path").forEach((path, i) => path.setAttribute("d", grid[i]));
+    const series = state.storage.series;
+    const max = Math.max(...series.map(p => Math.max(p.read_gbps, p.write_gbps)));
+    const toPath = key => Charts.pathFromPoints(series.map(p => [
+      Charts.scaleLinear(p.minute, [series[0].minute, series.at(-1).minute], [35, width - 15]),
+      Charts.scaleLinear(p[key], [0, max], [165, 40])
+    ]), 0);
+    const timeLabels = svg.querySelectorAll(".axis text");
+    timeLabels[1].setAttribute("x", width - 15);
+    timeLabels[1].setAttribute("text-anchor", "end");
+    timeLabels[2].setAttribute("x", width - 155);
+    timeLabels[3].setAttribute("x", width - 85);
+    timeLabels[0].textContent = series[0].minute + "m";
+    timeLabels[1].textContent = series.at(-1).minute + "m";
+    $("storage-read-path").setAttribute("d", toPath("read_gbps"));
+    $("storage-write-path").setAttribute("d", toPath("write_gbps"));
   }
-  function refreshApiOptions(){
-    if(state.archive){$("api-endpoint").innerHTML='<option value="api/history/'+encodeURIComponent(state.archive.metadata.archive_id)+'.json">GET saved run archive</option><option value="api/history/index.json">GET run history index</option>';return}
-    if(!state.run)return;const id=state.run.run_id,paths=[["api/runs.json","Run registry"],["api/runs/"+id+"/summary.json","Run summary"],["api/runs/"+id+"/resources.json","Node / GPU resources"],["api/runs/"+id+"/interconnect.json","Interconnect matrix"],["api/runs/"+id+"/data-movement.json","Phase / data movement"],["api/runs/"+id+"/storage.json","Storage / checkpoint"]];
-    $("api-endpoint").innerHTML=paths.map(p=>'<option value="'+p[0]+'">GET /'+p[0]+' · '+p[1]+'</option>').join("");
+  function metricCard(label, value, source) {
+    return `<article class="metric-card"><small>${label}</small><b>${value}</b><p>${source}</p></article>`;
   }
-  async function runApiRequest(){
-    const path=$("api-endpoint").value,start=performance.now();$("api-status").textContent="GET /"+path+" · loading";$("api-response").textContent="";
-    try{const data=await api(path),elapsed=Math.round(performance.now()-start);$("api-status").textContent="200 OK · "+elapsed+" ms";$("api-response").textContent=JSON.stringify(data,null,2);state.history.unshift({path,status:200,elapsed});state.history=state.history.slice(0,5)}
-    catch(error){$("api-status").textContent="ERROR · "+error.message;$("api-response").textContent=JSON.stringify({error:error.message,endpoint:path},null,2);state.history.unshift({path,status:"ERR",elapsed:Math.round(performance.now()-start)})}renderHistory();
+
+  function renderWorkload() {
+    const m = state.summary.metrics, agentic = state.summary.workload === "Agentic RL";
+    $("workload-title").textContent = agentic ? "Agentic RL critical path" : "Training efficiency";
+    $("workload-description").textContent = agentic ? "rollout · agent · orchestration backpressure" : "quality · efficiency · distributed balance";
+    $("workload-source").textContent = agentic ? "VERL · RAY · OTEL" : "FRAMEWORK ADAPTER";
+    const cards = agentic ? [
+      ["Rollout queue", format(m.rollout_requests_queued) + " req", "verl / inference engine"],
+      ["Queue age P95", format(m.rollout_queue_age_seconds_p95, 1) + " s", "verl adapter"],
+      ["Rollout throughput", format(m.rollout_output_tokens_per_second) + " tok/s", "inference engine"],
+      ["TTFT P95", format(m.rollout_time_to_first_token_seconds_p95, 2) + " s", "inference engine"],
+      ["KV cache", percent(m.rollout_kv_cache_utilization_ratio), "inference engine"],
+      ["Preemptions", format(m.rollout_preemptions_total), "inference engine"],
+      ["Agent turns P95", format(m.agent_turns_p95), "verl agent adapter"],
+      ["Tool call P95", format(m.agent_tool_call_duration_seconds_p95, 1) + " s", "OpenTelemetry"],
+      ["Tool errors / timeout", format(m.agent_tool_call_errors_total) + " / " + format(m.agent_tool_call_timeouts_total), "OpenTelemetry"],
+      ["Environment wait", percent(m.agent_environment_wait_ratio), "OpenTelemetry summary"],
+      ["Pending tasks", format(m.orchestration_tasks_pending), "Ray metrics"],
+      ["Scheduling P95", format(m.orchestration_scheduling_delay_seconds_p95, 2) + " s", "Ray metrics"],
+      ["Actor restarts", format(m.orchestration_actor_restarts_total), "Ray metrics"],
+      ["Object store", format(m.orchestration_object_store_used_gib) + " GiB", "Ray metrics"],
+      ["Object spill", format(m.orchestration_object_spill_gib_total) + " GiB", "Ray object store"]
+    ] : [
+      ["Samples / second", format(m.training_samples_per_second, 1), "framework adapter"],
+      ["Training loss", format(m.training_loss, 3), "framework adapter"],
+      ["Model FLOPs util", percent(m.training_model_flops_utilization_ratio), "model manifest + adapter"],
+      ["Dataset load", format(m.training_dataset_load_time_seconds, 1) + " s", "phase marker"],
+      ["Model load", format(m.training_model_load_time_seconds, 1) + " s", "phase marker"],
+      ["Comm overlap", percent(m.training_communication_overlap_ratio), "selected trace"],
+      ["Pipeline bubble", percent(m.training_pipeline_bubble_ratio), "framework / trace"],
+      ["Rank straggler", percent(m.training_rank_straggler_ratio), "Megatron summary"],
+      ["GPU imbalance", percent(m.gpu_utilization_imbalance_ratio), "DCGM summary"],
+      ["Communication volume", format(m.network_communication_bytes_total / 1099511627776, 1) + " TiB", "framework / trace"],
+      ["Synchronization wait", format(m.network_synchronization_wait_seconds, 1) + " s", "framework timer"],
+      ["NCCL baseline util", percent(m.collective_baseline_utilization_ratio), "NCCL Tests comparison"],
+      ["GPU temperature", format(m.gpu_temperature_celsius) + " °C", "DCGM Exporter"],
+      ["GPU clock", format(m.gpu_clock_mhz) + " MHz", "DCGM Exporter"],
+      ["Memory pressure", percent(m.host_memory_pressure_ratio), "Node Exporter"],
+      ["Storage cache hit", percent(m.storage_cache_hit_ratio), "storage client"],
+      ["Network errors", format(m.network_errors_total), "Node Exporter"]
+    ];
+    $("workload-grid").innerHTML = cards.map(c => metricCard(...c)).join("");
   }
-  function renderHistory(){$("request-history").innerHTML=state.history.map(item=>'<div class="history-item"><span class="method">GET</span><code>/'+item.path+'</code><span class="'+(item.status===200?"status-ok":"")+'">'+item.status+'</span><span>'+item.elapsed+' ms</span></div>').join("")}
-  $("run-select").addEventListener("change",e=>{const url=new URL(location.href);url.searchParams.delete("archive");history.replaceState(null,"",url);loadRun(e.target.value)});$("window-select").addEventListener("change",()=>{if(state.summary)renderThroughput();toast($("window-select").value+"분 window로 변경했습니다.")});$("matrix-scope").addEventListener("change",renderMatrix);$("matrix-metric").addEventListener("change",renderMatrix);$("api-get").addEventListener("click",runApiRequest);
-  function stopDemo(){
-    clearInterval(state.timer);state.timer=null;state.playing=false;
-    $("demo-button").classList.remove("playing");$("demo-button").textContent="▷ Live demo";$("demo-button").setAttribute("aria-pressed","false");
+  function refreshApiOptions() {
+    if (state.archive) {
+      $("api-endpoint").innerHTML = `<option value="api/history/${encodeURIComponent(state.archive.metadata.archive_id)}.json">GET saved run archive</option><option value="api/history/index.json">GET run history index</option>`;
+      return;
+    }
+    if (!state.run) return;
+    const id = state.run.run_id;
+    const paths = [
+      ["api/runs.json", "Run registry"],
+      ["api/runs/" + id + "/summary.json", "Run summary"],
+      ["api/runs/" + id + "/resources.json", "Node / GPU resources"],
+      ["api/runs/" + id + "/interconnect.json", "Interconnect matrix"],
+      ["api/runs/" + id + "/data-movement.json", "Phase / data movement"],
+      ["api/runs/" + id + "/storage.json", "Storage / checkpoint"]
+    ];
+    $("api-endpoint").innerHTML = paths.map(p => '<option value="' + p[0] + '">GET /' + p[0] + ' · ' + p[1] + '</option>').join("");
+  }
+
+  async function runApiRequest() {
+    const path = $("api-endpoint").value, start = performance.now();
+    $("api-status").textContent = "GET /" + path + " · loading";
+    $("api-response").textContent = "";
+    try {
+      const data = await api(path), elapsed = Math.round(performance.now() - start);
+      $("api-status").textContent = "200 OK · " + elapsed + " ms";
+      $("api-response").textContent = JSON.stringify(data, null, 2);
+      state.history.unshift({ path, status: 200, elapsed });
+      state.history = state.history.slice(0, 5);
+    } catch (error) {
+      $("api-status").textContent = "ERROR · " + error.message;
+      $("api-response").textContent = JSON.stringify({ error: error.message, endpoint: path }, null, 2);
+      state.history.unshift({ path, status: "ERR", elapsed: Math.round(performance.now() - start) });
+    }
+    renderHistory();
+  }
+
+  function renderHistory() {
+    $("request-history").innerHTML = state.history.map(item => `<div class="history-item"><span class="method">GET</span><code>/${item.path}</code><span class="${item.status === 200 ? "status-ok" : ""}">${item.status}</span><span>${item.elapsed} ms</span></div>`).join("");
+  }
+
+  $("run-select").addEventListener("change", e => {
+    const url = new URL(location.href);
+    url.searchParams.delete("archive");
+    history.replaceState(null, "", url);
+    loadRun(e.target.value);
+  });
+  $("window-select").addEventListener("change", () => {
+    if (state.summary) renderThroughput();
+    toast($("window-select").value + "분 window로 변경했습니다.");
+  });
+  $("matrix-scope").addEventListener("change", renderMatrix);
+  $("matrix-metric").addEventListener("change", renderMatrix);
+  $("api-get").addEventListener("click", runApiRequest);
+  function stopDemo() {
+    clearInterval(state.timer);
+    state.timer = null;
+    state.playing = false;
+    $("demo-button").classList.remove("playing");
+    $("demo-button").textContent = "▷ Live demo";
+    $("demo-button").setAttribute("aria-pressed", "false");
     $("stream-bar").classList.remove("live");
-    $("stream-status").textContent=state.tick?"Paused · 마지막 샘플 유지":"Snapshot · 데모 대기";
+    $("stream-status").textContent = state.tick ? "Paused · 마지막 샘플 유지" : "Snapshot · 데모 대기";
   }
-  function advanceDemo(){
+
+  function advanceDemo() {
     state.tick++;
-    const series=state.storage.series;
-    Object.assign(state,DemoTelemetry.sample(state.baseline,state.tick));
-    state.sampledAt=new Date().toISOString();
-    state.recordedSamples.push({timestamp:state.sampledAt,metrics:{training_tokens_per_second:state.summary.metrics.training_tokens_per_second,training_step_time_seconds_p95:state.summary.metrics.training_step_time_seconds_p95,gpu_utilization_percent:state.summary.metrics.gpu_utilization_percent,training_loss:state.summary.metrics.training_loss}});
-    state.recordedSamples=state.recordedSamples.slice(-3600);
-    state.samples.push(state.summary.metrics.training_tokens_per_second);state.samples=state.samples.slice(-180);
-    const devices=state.storage.devices,mean=key=>devices.reduce((sum,d)=>sum+d[key],0)/devices.length;
-    state.storage.series=[...series.slice(-59),{minute:series[series.length-1].minute+1,read_gbps:mean("read_gbps"),write_gbps:mean("write_gbps"),latency_ms_p95:state.summary.metrics.storage_latency_ms_p95}];
+    const series = state.storage.series;
+    Object.assign(state, DemoTelemetry.sample(state.baseline, state.tick));
+    state.sampledAt = new Date().toISOString();
+    state.recordedSamples.push({
+      timestamp: state.sampledAt,
+      metrics: {
+        training_tokens_per_second: state.summary.metrics.training_tokens_per_second,
+        training_step_time_seconds_p95: state.summary.metrics.training_step_time_seconds_p95,
+        gpu_utilization_percent: state.summary.metrics.gpu_utilization_percent,
+        training_loss: state.summary.metrics.training_loss
+      }
+    });
+    state.recordedSamples = state.recordedSamples.slice(-3600);
+    state.samples.push(state.summary.metrics.training_tokens_per_second);
+    state.samples = state.samples.slice(-180);
+    const devices = state.storage.devices;
+    const mean = key => devices.reduce((sum, d) => sum + d[key], 0) / devices.length;
+    state.storage.series = [...series.slice(-59), {
+      minute: series[series.length - 1].minute + 1,
+      read_gbps: mean("read_gbps"),
+      write_gbps: mean("write_gbps"),
+      latency_ms_p95: state.summary.metrics.storage_latency_ms_p95
+    }];
     renderAll();
-    $("stream-detail").textContent="샘플 "+state.tick+" · "+new Date(state.sampledAt).toLocaleTimeString()+" 갱신 · 1초마다 합성 1분 재생";
+    $("stream-detail").textContent = "샘플 " + state.tick + " · " + new Date(state.sampledAt).toLocaleTimeString() + " 갱신 · 1초마다 합성 1분 재생";
   }
-  $("demo-button").addEventListener("click",()=>{
-    if(!state.baseline||state.archive)return;
-    if(state.playing){stopDemo();return}
-    state.playing=true;$("demo-button").classList.add("playing");$("demo-button").textContent="Ⅱ Pause demo";$("demo-button").setAttribute("aria-pressed","true");
-    $("stream-bar").classList.add("live");$("stream-status").textContent="Live demo · 합성 스트림";
-    advanceDemo();state.timer=setInterval(advanceDemo,1000);
+
+  $("demo-button").addEventListener("click", () => {
+    if (!state.baseline || state.archive) return;
+    if (state.playing) {
+      stopDemo();
+      return;
+    }
+    state.playing = true;
+    $("demo-button").classList.add("playing");
+    $("demo-button").textContent = "Ⅱ Pause demo";
+    $("demo-button").setAttribute("aria-pressed", "true");
+    $("stream-bar").classList.add("live");
+    $("stream-status").textContent = "Live demo · 합성 스트림";
+    advanceDemo();
+    state.timer = setInterval(advanceDemo, 1000);
   });
-  $("export-button").addEventListener("click",()=>{if(!state.summary)return;const report=state.archive?state.archive.report:{exported_at:new Date().toISOString(),synthetic:true,history:{samples:state.recordedSamples||[],events:[]},demo:{samples:state.tick,sampled_at:state.sampledAt,playing:state.playing,simulated_seconds_per_sample:60},run:state.run,summary:state.summary,resources:state.resources,interconnect:state.interconnect,data_movement:state.dataMovement,storage:state.storage},url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:"application/json"})),a=document.createElement("a");a.href=url;a.download=state.run.run_id+"-profiling-report.json";a.click();URL.revokeObjectURL(url);toast("Profiling report를 내보냈습니다.")});
-  window.addEventListener("resize",()=>{if(state.summary){renderThroughput();renderStorage()}});
-  window.addEventListener("history-navigate",()=>selectView("history"));
-  window.addEventListener("popstate",()=>{if(["overview","cluster","movement","storage","workload","api"].includes(location.hash.slice(1)))initialize()});
-  window.addEventListener("history-open-profile",event=>{
-    stopDemo();state.requestId++;
-    const archive=JSON.parse(JSON.stringify(event.detail)),r=archive.report,m=archive.metadata;
-    document.body.classList.add("archive-mode");state.archive=archive;state.tick=0;state.sampledAt=null;state.selectedGpu=null;state.selectedPath=null;
-    Object.assign(state,{run:{...r.run,status:m.status},summary:r.summary,resources:r.resources,interconnect:r.interconnect,storage:r.storage,dataMovement:r.data_movement});
-    state.baseline=JSON.parse(JSON.stringify({summary:r.summary,resources:r.resources,interconnect:r.interconnect,storage:r.storage,dataMovement:r.data_movement}));
-    $("run-name").textContent=m.name;$("run-context").textContent=m.framework+" · "+m.workload+" · Saved archive "+m.archive_id;
-    $("data-origin").textContent=m.synthetic?"SYNTHETIC DATA":"MEASURED DATA";$("data-notice").textContent=m.synthetic?"저장된 합성 학습 예제입니다. 실제 benchmark 결과가 아닙니다.":"저장된 실행 report입니다. 수집된 측정 범위와 설정은 Run history에서 확인하세요.";
-    $("run-status").textContent=m.status.toUpperCase();$("run-updated").textContent="Archived "+new Date(m.archived_at).toLocaleString();
-    $("demo-button").disabled=true;$("window-select").disabled=true;$("export-button").disabled=false;
-    $("stream-status").textContent="Archived run · Read only";$("stream-detail").textContent="저장된 snapshot입니다. 실행 기록은 변경되지 않습니다.";
-    $("api-health").textContent="● Archive loaded";$("run-select").value=r.run.run_id;
-    seedSamples();renderAll();selectView("overview");
+
+  $("export-button").addEventListener("click", () => {
+    if (!state.summary) return;
+    const report = state.archive ? state.archive.report : {
+      exported_at: new Date().toISOString(),
+      synthetic: true,
+      history: { samples: state.recordedSamples || [], events: [] },
+      demo: { samples: state.tick, sampled_at: state.sampledAt, playing: state.playing, simulated_seconds_per_sample: 60 },
+      run: state.run,
+      summary: state.summary,
+      resources: state.resources,
+      interconnect: state.interconnect,
+      data_movement: state.dataMovement,
+      storage: state.storage
+    };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = state.run.run_id + "-profiling-report.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("Profiling report를 내보냈습니다.");
   });
-  window.addEventListener("observatory-theme-change",()=>{if(state.interconnect)renderMatrix()});
+
+  window.addEventListener("resize", () => {
+    if (state.summary) {
+      renderThroughput();
+      renderStorage();
+    }
+  });
+  window.addEventListener("history-navigate", () => selectView("history"));
+  window.addEventListener("popstate", () => {
+    if (["overview", "cluster", "movement", "storage", "workload", "api"].includes(location.hash.slice(1))) initialize();
+  });
+  window.addEventListener("history-open-profile", event => {
+    stopDemo();
+    state.requestId++;
+    const archive = JSON.parse(JSON.stringify(event.detail));
+    const r = archive.report, m = archive.metadata;
+    document.body.classList.add("archive-mode");
+    state.archive = archive;
+    state.tick = 0;
+    state.sampledAt = null;
+    state.selectedGpu = null;
+    state.selectedPath = null;
+    Object.assign(state, { run: { ...r.run, status: m.status }, summary: r.summary, resources: r.resources, interconnect: r.interconnect, storage: r.storage, dataMovement: r.data_movement });
+    state.baseline = JSON.parse(JSON.stringify({ summary: r.summary, resources: r.resources, interconnect: r.interconnect, storage: r.storage, dataMovement: r.data_movement }));
+    $("run-name").textContent = m.name;
+    $("run-context").textContent = m.framework + " · " + m.workload + " · Saved archive " + m.archive_id;
+    $("data-origin").textContent = m.synthetic ? "SYNTHETIC DATA" : "MEASURED DATA";
+    $("data-notice").textContent = m.synthetic ? "저장된 합성 학습 예제입니다. 실제 benchmark 결과가 아닙니다." : "저장된 실행 report입니다. 수집된 측정 범위와 설정은 Run history에서 확인하세요.";
+    $("run-status").textContent = m.status.toUpperCase();
+    $("run-updated").textContent = "Archived " + new Date(m.archived_at).toLocaleString();
+    $("demo-button").disabled = true;
+    $("window-select").disabled = true;
+    $("export-button").disabled = false;
+    $("stream-status").textContent = "Archived run · Read only";
+    $("stream-detail").textContent = "저장된 snapshot입니다. 실행 기록은 변경되지 않습니다.";
+    $("api-health").textContent = "● Archive loaded";
+    $("run-select").value = r.run.run_id;
+    seedSamples();
+    renderAll();
+    selectView("overview");
+  });
+  window.addEventListener("observatory-theme-change", () => { if (state.interconnect) renderMatrix(); });
   initialize();
 })();
 </script>
