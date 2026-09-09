@@ -73,7 +73,3 @@ Dashboard vocabulary는 `post-training-lab`의 [`profiling/config/metrics.json`]
 - checkpoint: framework adapter와 timer
 
 실 서비스에서는 이 응답 계약을 유지한 채 JSON fixture를 인증된 API로 교체합니다. 브라우저가 Prometheus credential을 갖지 않도록 API 서버가 query allowlist, timeout, RBAC와 audit log를 적용하는 구조가 적합합니다.
-
-## Repository Migration
-
-기존 clone에서는 `git remote set-url origin git@github.com:daegyu94/post-training-lab-observatory.git`로 remote를 갱신하세요. 저장소는 `sft-lab-observatory`에서 이름을 변경했으며, GitHub Pages의 기존 주소는 자동 리디렉션되지 않습니다. 위의 새 Live dashboard 링크를 사용하세요.
